@@ -127,6 +127,7 @@ class _ReadinessArcHeroState extends ConsumerState<ReadinessArcHero>
                       emoji: '📈',
                       label: 'Projected: ',
                       amount: dashboard.projectedCorpus,
+                      subtitle: 'Assumes 10% annual returns',
                     ),
                     const SizedBox(height: 6),
                     _MiniStatRow(
@@ -169,10 +170,30 @@ class _ReadinessArcHeroState extends ConsumerState<ReadinessArcHero>
             ),
           ),
           const SizedBox(height: 2),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RupeeDisplay(
+                amount: dashboard.inflatedMonthlyNeed,
+                size: RupeeDisplaySize.small,
+              ),
+              Text(
+                '*',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           Center(
-            child: RupeeDisplay(
-              amount: dashboard.inflatedMonthlyNeed,
-              size: RupeeDisplaySize.small,
+            child: Text(
+              '*Adjusted for 6% annual inflation over ${dashboard.yearsToRetirement} years',
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textDisabled,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
         ],
@@ -185,21 +206,41 @@ class _MiniStatRow extends StatelessWidget {
   final String emoji;
   final String label;
   final double amount;
+  final String? subtitle;
 
   const _MiniStatRow({
     required this.emoji,
     required this.label,
     required this.amount,
+    this.subtitle,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 14)),
-        const SizedBox(width: 4),
-        Text(label, style: AppTypography.bodySmall),
-        RupeeDisplay(amount: amount, size: RupeeDisplaySize.small),
+        Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 14)),
+            const SizedBox(width: 4),
+            Text(label, style: AppTypography.bodySmall),
+            RupeeDisplay(amount: amount, size: RupeeDisplaySize.small),
+          ],
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 2),
+          Padding(
+            padding: const EdgeInsets.only(left: 22),
+            child: Text(
+              subtitle!,
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textDisabled,
+                fontSize: 10,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

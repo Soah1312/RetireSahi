@@ -10,6 +10,8 @@ class NPSTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? prefixText;
   final String? suffixText;
+  final Widget? prefixIcon;
+  final Widget? suffixIcon;
   final String? Function(String?)? validator;
   final bool obscureText;
   final ValueChanged<String>? onChanged;
@@ -22,6 +24,8 @@ class NPSTextField extends StatelessWidget {
     this.keyboardType,
     this.prefixText,
     this.suffixText,
+    this.prefixIcon,
+    this.suffixIcon,
     this.validator,
     this.obscureText = false,
     this.onChanged,
@@ -41,10 +45,12 @@ class NPSTextField extends StatelessWidget {
         labelText: label,
         hintText: hint,
         prefixText: prefixText,
+        prefixIcon: prefixIcon,
         prefixStyle: AppTypography.bodyLarge.copyWith(
           color: AppColors.accentAmber,
         ),
         suffixText: suffixText,
+        suffixIcon: suffixIcon,
         suffixStyle: AppTypography.bodyMedium,
       ),
     );

@@ -10,7 +10,8 @@ final authProvider =
 
 class AuthNotifier extends StateNotifier<AsyncValue<UserProfile?>> {
   final Ref _ref;
-  AuthNotifier(this._ref) : super(const AsyncValue.data(null));
+  AuthNotifier(this._ref, [UserProfile? initialProfile])
+    : super(AsyncValue.data(initialProfile));
 
   final _client = Supabase.instance.client;
 

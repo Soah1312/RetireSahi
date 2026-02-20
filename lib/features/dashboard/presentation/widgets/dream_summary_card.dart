@@ -88,6 +88,7 @@ class DreamSummaryCard extends ConsumerWidget {
 
           // Bottom totals row
           Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text('Total today: ', style: AppTypography.bodySmall),
               Text(
@@ -101,7 +102,13 @@ class DreamSummaryCard extends ConsumerWidget {
                 amount: inflatedMonthly,
                 size: RupeeDisplaySize.small,
               ),
-              Text('/mo at retirement', style: AppTypography.bodySmall),
+              Text('/mo at retirement ', style: AppTypography.bodySmall),
+              Text(
+                '(inflation-adjusted)',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textDisabled,
+                ),
+              ),
             ],
           ),
         ],
@@ -168,6 +175,17 @@ class _LineItemTile extends StatelessWidget {
   final dynamic item;
 
   const _LineItemTile({required this.item});
+
+  String _toTitleCase(String text) {
+    if (text.isEmpty) return text;
+    return text
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return word;
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
+        .join(' ');
+  }
 
   @override
   Widget build(BuildContext context) {

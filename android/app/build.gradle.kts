@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.npspulse.nps_pulse"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

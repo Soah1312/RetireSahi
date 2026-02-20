@@ -8,6 +8,8 @@ import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/auth_provider.dart';
 
+import 'go_router_refresh_stream.dart';
+
 // ──────────────────────────────────────────────────────────
 // Placeholder screens — will be replaced by feature screens
 // ──────────────────────────────────────────────────────────
@@ -98,99 +100,100 @@ class DashboardShell extends StatelessWidget {
 // GoRouter configuration
 // ──────────────────────────────────────────────────────────
 
-final GoRouter appRouter = GoRouter(
-  initialLocation: '/login',
-  redirect: (context, state) {
-    // Note: In Riverpod, we should ideally use a listenable for redirection.
-    // For MVP simple redirection:
-    final container = ProviderScope.containerOf(context);
-    final authState = container.read(authProvider);
-    final isAuthenticated = authState.value != null;
+final routerProvider = Provider<GoRouter>((ref) {
+  final authNotifier = ref.watch(authProvider.notifier);
+  final authState = ref.watch(authProvider);
 
-    final isLoggingIn = state.uri.toString() == '/login';
-    final isOnboarding = state.uri.toString() == '/onboarding';
+  return GoRouter(
+    initialLocation: '/login',
+    refreshListenable: GoRouterRefreshStream(authNotifier.stream),
+    redirect: (context, state) {
+      final isAuthenticated = authState.value != null;
+      final isLoggingIn = state.uri.toString() == '/login';
+      final isOnboarding = state.uri.toString() == '/onboarding';
 
-    // If not authenticated and not on login or onboarding, go to login
-    if (!isAuthenticated && !isLoggingIn && !isOnboarding) {
-      return '/login';
-    }
+      // If not authenticated and not on login or onboarding, go to login
+      if (!isAuthenticated && !isLoggingIn && !isOnboarding) {
+        return '/login';
+      }
 
-    // If authenticated and on login or onboarding, go to home
-    if (isAuthenticated && (isLoggingIn || isOnboarding)) {
-      return '/dashboard/home';
-    }
+      // If authenticated and on login or onboarding, go to home
+      if (isAuthenticated && (isLoggingIn || isOnboarding)) {
+        return '/dashboard/home';
+      }
 
-    return null;
-  },
-  routes: [
-    // Login
-    GoRoute(
-      path: '/login',
-      name: 'login',
-      builder: (context, state) => const LoginScreen(),
-    ),
+      return null;
+    },
+    routes: [
+      // Login
+      GoRoute(
+        path: '/login',
+        name: 'login',
+        builder: (context, state) => const LoginScreen(),
+      ),
 
-    // Onboarding
-    GoRoute(
-      path: '/onboarding',
-      name: 'onboarding',
-      builder: (context, state) => const OnboardingScreen(),
-    ),
+      // Onboarding
+      GoRoute(
+        path: '/onboarding',
+        name: 'onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
 
-    // Dashboard — shell route with bottom nav
-    ShellRoute(
-      builder: (context, state, child) => DashboardShell(child: child),
-      routes: [
-        GoRoute(
-          path: '/dashboard/home',
-          name: 'dashboard-home',
-          pageBuilder: (context, state) => CustomTransitionPage(
-            child: const DashboardScreen(),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-            transitionDuration: const Duration(milliseconds: 600),
+      // Dashboard — shell route with bottom nav
+      ShellRoute(
+        builder: (context, state, child) => DashboardShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/dashboard/home',
+            name: 'dashboard-home',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              child: const DashboardScreen(),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+              transitionDuration: const Duration(milliseconds: 600),
+            ),
           ),
-        ),
-        GoRoute(
-          path: '/dashboard/dream',
-          name: 'dashboard-dream',
-          builder: (context, state) =>
-              const _PlaceholderScreen(title: 'Dream Planner'),
-        ),
-        GoRoute(
-          path: '/dashboard/tax-shield',
-          name: 'dashboard-tax-shield',
-          builder: (context, state) =>
-              const _PlaceholderScreen(title: 'Tax Shield'),
-        ),
-        GoRoute(
-          path: '/dashboard/insights',
-          name: 'dashboard-insights',
-          builder: (context, state) =>
-              const _PlaceholderScreen(title: 'Insights'),
-        ),
-      ],
-    ),
+          GoRoute(
+            path: '/dashboard/dream',
+            name: 'dashboard-dream',
+            builder: (context, state) =>
+                const _PlaceholderScreen(title: 'Dream Planner'),
+          ),
+          GoRoute(
+            path: '/dashboard/tax-shield',
+            name: 'dashboard-tax-shield',
+            builder: (context, state) =>
+                const _PlaceholderScreen(title: 'Tax Shield'),
+          ),
+          GoRoute(
+            path: '/dashboard/insights',
+            name: 'dashboard-insights',
+            builder: (context, state) =>
+                const _PlaceholderScreen(title: 'Insights'),
+          ),
+        ],
+      ),
 
-    // Standalone routes
-    GoRoute(
-      path: '/readiness-detail',
-      name: 'readiness-detail',
-      builder: (context, state) =>
-          const _PlaceholderScreen(title: 'Readiness Detail'),
-    ),
-    GoRoute(
-      path: '/monte-carlo',
-      name: 'monte-carlo',
-      builder: (context, state) =>
-          const _PlaceholderScreen(title: 'Monte Carlo'),
-    ),
-    GoRoute(
-      path: '/profile',
-      name: 'profile',
-      builder: (context, state) => const _PlaceholderScreen(title: 'Profile'),
-    ),
-  ],
-);
+      // Standalone routes
+      GoRoute(
+        path: '/readiness-detail',
+        name: 'readiness-detail',
+        builder: (context, state) =>
+            const _PlaceholderScreen(title: 'Readiness Detail'),
+      ),
+      GoRoute(
+        path: '/monte-carlo',
+        name: 'monte-carlo',
+        builder: (context, state) =>
+            const _PlaceholderScreen(title: 'Monte Carlo'),
+      ),
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        builder: (context, state) => const _PlaceholderScreen(title: 'Profile'),
+      ),
+    ],
+  );
+});
