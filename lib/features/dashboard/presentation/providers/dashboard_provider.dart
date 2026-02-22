@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../features/onboarding/domain/onboarding_state.dart';
 import '../../../../features/onboarding/presentation/onboarding_provider.dart';
 import '../../../../core/utils/retirement_calculator.dart';
+import '../../../ai_assistant/data/ai_assistant_service.dart';
 
 // ─────────────────────────────────────────────────────────────
 // Chat Message Model
@@ -14,12 +15,16 @@ class ChatMessage {
   final String text;
   final bool isUser;
   final String? sourceLabel;
+  final List<dynamic> sources;
+  final bool isFallback;
   final DateTime timestamp;
 
   const ChatMessage({
     required this.text,
     required this.isUser,
     this.sourceLabel,
+    this.sources = const [],
+    this.isFallback = false,
     required this.timestamp,
   });
 }
@@ -148,21 +153,13 @@ final dashboardProvider = Provider<DashboardState>((ref) {
 });
 
 // ─────────────────────────────────────────────────────────────
-// Chat Provider
+// Chat Provider — Live RAG API
 // ─────────────────────────────────────────────────────────────
 
 class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   final Ref _ref;
 
-  ChatNotifier(this._ref)
-    : super([
-        ChatMessage(
-          text:
-              "Hi! 👋 I'm your NPS Co-Pilot. I can answer questions about your NPS, tax savings, withdrawal rules, and help you understand your retirement score. What would you like to know?",
-          isUser: false,
-          timestamp: DateTime.now(),
-        ),
-      ]);
+  ChatNotifier(this._ref) : super([]);
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -170,25 +167,66 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty || _isLoading) return;
 
-    // Add user message
+    // Add user message immediately
     state = [
       ...state,
       ChatMessage(text: text.trim(), isUser: true, timestamp: DateTime.now()),
     ];
 
     _isLoading = true;
-    // Notify listeners of loading state
-    state = [...state];
+    state = [...state]; // trigger rebuild for loading indicator
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+    // Build conversation history (last 8 messages)
+    final history = state
+        .where((m) => m != state.last) // exclude the just-added user msg
+        .take(8)
+        .map<Map<String, dynamic>>((m) => {'text': m.text, 'is_user': m.isUser})
+        .toList();
 
-    final response = _getMockResponse(text.toLowerCase(), _ref);
+    // Build user context from onboarding state
+    final onboarding = _ref.read(onboardingProvider);
+    final userContext = AIAssistantService.buildUserContext(
+      firstName: onboarding.firstName.isNotEmpty
+          ? onboarding.firstName
+          : 'User',
+      age: onboarding.age ?? 30,
+      sector: onboarding.sector ?? 'private',
+      monthlySalary: onboarding.monthlySalary ?? 0,
+      currentCorpus: onboarding.currentCorpus ?? 0,
+      monthlyContribution:
+          (onboarding.monthlyEmployeeContribution ?? 0) +
+          (onboarding.monthlyEmployerContribution ?? 0),
+      targetRetirementAge: onboarding.targetRetirementAge,
+      taxRegime: '', // Tax regime is in UserProfile, default empty
+      lifestyleTier: onboarding.selectedTierName,
+      retirementMonthlyNeed: onboarding.retirementMonthlyAmount,
+    );
+
+    // Call the live API
+    final result = await AIAssistantService.sendMessage(
+      message: text.trim(),
+      userContext: userContext,
+      conversationHistory: history,
+    );
+
+    // Build source label from first source
+    final sources = result['sources'] as List;
+    String? sourceLabel;
+    if (sources.isNotEmpty) {
+      final first = sources.first;
+      if (first is Map) {
+        sourceLabel = first['source_name'] as String?;
+      }
+    }
+
     state = [
       ...state,
       ChatMessage(
-        text: response.text,
+        text: result['response'] as String,
         isUser: false,
-        sourceLabel: response.source,
+        sourceLabel: sourceLabel,
+        sources: sources,
+        isFallback: result['is_fallback'] as bool,
         timestamp: DateTime.now(),
       ),
     ];
@@ -196,65 +234,6 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
     _isLoading = false;
     state = [...state];
   }
-
-  _MockResponse _getMockResponse(String query, Ref ref) {
-    final dashboard = ref.read(dashboardProvider);
-    final score = dashboard.readinessScore;
-
-    if (query.contains('withdraw') || query.contains('exit')) {
-      return _MockResponse(
-        text:
-            'Under NPS rules, you can make partial withdrawals after 3 years for specific purposes like education, home purchase, or medical treatment — up to 25% of your contributions. '
-            'Full withdrawal is allowed at age 60, where 60% is tax-free as lump sum and 40% must purchase an annuity.',
-        source: 'PFRDA Circular 2023-05',
-      );
-    }
-
-    if (query.contains('tax') ||
-        query.contains('saving') ||
-        query.contains('deduction')) {
-      return _MockResponse(
-        text:
-            'You can claim deductions under 80CCD(1) up to 10% of your CTC and an additional ₹50,000 under 80CCD(1B). '
-            'This could save you up to ₹46,800 in taxes annually under the old regime.',
-        source: 'Income Tax Act Section 80CCD',
-      );
-    }
-
-    if (query.contains('score') ||
-        query.contains('readiness') ||
-        query.contains('calculated')) {
-      return _MockResponse(
-        text:
-            'Your Readiness Score of $score% is based on your current corpus, monthly contributions, and your retirement lifestyle target. '
-            "The biggest lever to improve your score right now is increasing your monthly contribution.",
-        source: 'NPS Pulse calculation engine',
-      );
-    }
-
-    if (query.contains('tier') ||
-        query.contains('tier ii') ||
-        query.contains('explain')) {
-      return _MockResponse(
-        text:
-            'NPS has two tiers. Tier I is the mandatory pension account with tax benefits but restricted withdrawals — this is your primary retirement account. '
-            'Tier II is a voluntary savings account with no tax benefits but full withdrawal flexibility, functioning like a mutual fund without the exit load.',
-        source: 'PFRDA NPS Guidelines 2024',
-      );
-    }
-
-    return _MockResponse(
-      text:
-          "That's a great question about NPS. I'm still being trained on the full PFRDA circular database. "
-          'For now I can help with withdrawal rules, tax deductions, Tier I vs II differences, and your personal readiness score. What would you like to know about these?',
-    );
-  }
-}
-
-class _MockResponse {
-  final String text;
-  final String? source;
-  const _MockResponse({required this.text, this.source});
 }
 
 final chatProvider = StateNotifierProvider<ChatNotifier, List<ChatMessage>>((

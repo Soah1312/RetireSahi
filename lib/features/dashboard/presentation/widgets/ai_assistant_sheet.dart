@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../features/onboarding/presentation/onboarding_provider.dart';
 import '../providers/dashboard_provider.dart';
-import 'quick_prompt_chips.dart';
 
 // ─────────────────────────────────────────────────────────────
 // AI Assistant Bottom Sheet
@@ -67,6 +67,11 @@ class _AIAssistantSheetState extends ConsumerState<AIAssistantSheet> {
     final messages = ref.watch(chatProvider);
     final isLoading = ref.watch(chatLoadingProvider);
 
+    final onboarding = ref.watch(onboardingProvider);
+    final firstName = onboarding.firstName.isNotEmpty
+        ? onboarding.firstName
+        : 'there';
+
     // Auto-scroll when new messages arrive
     if (messages.isNotEmpty) {
       _scrollToBottom();
@@ -114,8 +119,10 @@ class _AIAssistantSheetState extends ConsumerState<AIAssistantSheet> {
                                 style: AppTypography.headingSmall,
                               ),
                               Text(
-                                'Powered by Gemini',
-                                style: AppTypography.bodySmall,
+                                'Powered by Cohere Command R+',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ],
                           ),
@@ -135,41 +142,137 @@ class _AIAssistantSheetState extends ConsumerState<AIAssistantSheet> {
 
               const SizedBox(height: 12),
 
-              // ── Quick prompts
-              QuickPromptChips(onChipTapped: (prompt) => _sendMessage(prompt)),
+              // ── Quick prompts (only when no messages)
+              if (messages.isEmpty)
+                _QuickPromptChips(
+                  onChipTapped: (prompt) {
+                    _inputController.text = prompt;
+                    setState(() => _canSend = true);
+                  },
+                ),
 
-              const SizedBox(height: 12),
+              if (messages.isEmpty) const SizedBox(height: 12),
               const Divider(height: 1, color: AppColors.borderSubtle),
 
               // ── Chat messages
               Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  itemCount: messages.length + (isLoading ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == messages.length && isLoading) {
-                      return const _TypingIndicator();
-                    }
-                    final msg = messages[index];
-                    return _ChatBubble(
-                      key: ValueKey(msg.timestamp.millisecondsSinceEpoch),
-                      message: msg,
-                    );
-                  },
-                ),
+                child: messages.isEmpty && !isLoading
+                    ? _WelcomeMessage(firstName: firstName)
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        itemCount: messages.length + (isLoading ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == messages.length && isLoading) {
+                            return const _TypingIndicator();
+                          }
+                          final msg = messages[index];
+                          return _ChatBubble(
+                            key: ValueKey(msg.timestamp.millisecondsSinceEpoch),
+                            message: msg,
+                          );
+                        },
+                      ),
               ),
 
               // ── Input bar
               _InputBar(
                 controller: _inputController,
-                canSend: _canSend,
+                canSend: _canSend && !isLoading,
+                isLoading: isLoading,
                 onSend: () => _sendMessage(_inputController.text),
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Welcome Message
+// ─────────────────────────────────────────────────────────────
+
+class _WelcomeMessage extends StatelessWidget {
+  final String firstName;
+  const _WelcomeMessage({required this.firstName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.backgroundTertiary,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          '👋 Hi $firstName! I\'m your NPS Co-Pilot.\n\n'
+          'I can answer questions about your NPS, '
+          'tax savings, withdrawal rules, and help '
+          'you understand your retirement score.\n\n'
+          'What would you like to know?',
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Quick Prompt Chips (inline)
+// ─────────────────────────────────────────────────────────────
+
+class _QuickPromptChips extends StatelessWidget {
+  final void Function(String prompt) onChipTapped;
+
+  const _QuickPromptChips({required this.onChipTapped});
+
+  static const List<String> _prompts = [
+    'Can I withdraw early?',
+    "What's my tax saving?",
+    'Explain Tier II NPS',
+    'Best fund allocation?',
+    'NPS vs PPF?',
+    'Partial withdrawal rules?',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
+      child: Row(
+        children: _prompts.map((prompt) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => onChipTapped(prompt),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundTertiary,
+                  borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+                  border: Border.all(color: AppColors.borderMedium, width: 1),
+                ),
+                child: Text(
+                  prompt,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }
@@ -270,24 +373,56 @@ class _ChatBubbleState extends State<_ChatBubble>
                   ),
                 ),
               ),
-              // Source citation
-              if (!msg.isUser && msg.sourceLabel != null) ...[
+
+              // Source chips
+              if (!msg.isUser && msg.sources.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: msg.sources.map<Widget>((source) {
+                      final name = source is Map
+                          ? (source['source_name'] ?? 'Source')
+                          : 'Source';
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.chipRadius,
+                            ),
+                            border: Border.all(
+                              color: AppColors.borderSubtle,
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            '📄 $name',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textDisabled,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(AppSpacing.sm),
-                    border: Border.all(color: AppColors.borderSubtle, width: 1),
-                  ),
-                  child: Text(
-                    '📄 Source: ${msg.sourceLabel}',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                ),
+              ],
+
+              // Fallback warning
+              if (!msg.isUser && msg.isFallback) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '⚠️ Response from general knowledge',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.warning,
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -337,9 +472,9 @@ class _TypingIndicatorState extends State<_TypingIndicator>
         alignment: Alignment.centerLeft,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: AppColors.backgroundTertiary,
-            borderRadius: const BorderRadius.only(
+            borderRadius: BorderRadius.only(
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
               bottomRight: Radius.circular(16),
@@ -385,11 +520,13 @@ class _TypingIndicatorState extends State<_TypingIndicator>
 class _InputBar extends StatelessWidget {
   final TextEditingController controller;
   final bool canSend;
+  final bool isLoading;
   final VoidCallback onSend;
 
   const _InputBar({
     required this.controller,
     required this.canSend,
+    required this.isLoading,
     required this.onSend,
   });
 
@@ -412,7 +549,7 @@ class _InputBar extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
-              maxLines: 4,
+              maxLines: 3,
               minLines: 1,
               style: AppTypography.bodyMedium.copyWith(
                 color: AppColors.textPrimary,
@@ -454,13 +591,21 @@ class _InputBar extends StatelessWidget {
                 color: canSend ? AppColors.accentAmber : AppColors.borderMedium,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.arrow_upward_rounded,
-                color: canSend
-                    ? AppColors.backgroundPrimary
-                    : AppColors.textDisabled,
-                size: 22,
-              ),
+              child: isLoading
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.backgroundPrimary,
+                      ),
+                    )
+                  : Icon(
+                      Icons.send_rounded,
+                      color: canSend
+                          ? AppColors.backgroundPrimary
+                          : AppColors.textDisabled,
+                      size: 20,
+                    ),
             ),
           ),
         ],

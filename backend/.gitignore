@@ -1,0 +1,11 @@
+.env
+docs/
+processed/
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+test_*.py
+*.pdf
+debug_docs.json
