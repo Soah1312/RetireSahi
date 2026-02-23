@@ -381,7 +381,7 @@ IMPORTANT: Use the exact figures from the user profile above when answering. Do 
         if chat_history:
             payload["chat_history"] = chat_history
             
-        res = requests.post(url, headers=headers, json=payload, timeout=60)
+        res = requests.post(url, headers=headers, json=payload, timeout=110)
         res.raise_for_status()
         data = res.json()
         

@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 class AIAssistantService {
   static const String baseUrl = 'https://soah-13-nps-pulse-backend.hf.space';
 
-  static const Duration chatTimeout = Duration(seconds: 45);
-  static const Duration pingTimeout = Duration(seconds: 10);
+  static const Duration chatTimeout = Duration(seconds: 90);
+  static const Duration pingTimeout = Duration(seconds: 15);
 
   /// Wake up the Hugging Face server (free tier sleeps after inactivity).
   /// Call this after user logs in so it's ready by the time they open chat.
