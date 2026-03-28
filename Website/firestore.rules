@@ -16,10 +16,8 @@ service cloud.firestore {
     match /users/{userId} {
       // Allows anyone to CREATE an account for themselves
       allow create: if isOwner(userId);
-      // Only the authenticated owner can read/update their profile/data
-      allow read, update: if isOwner(userId);
-      // Block deleting unless needed
-      allow delete: if false;
+      // Only the authenticated owner can read/update/delete their profile/data
+      allow read, update, delete: if isOwner(userId);
       
       // Cascade permissions to subcollections under a user
       match /{document=**} {

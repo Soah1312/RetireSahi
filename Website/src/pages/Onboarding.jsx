@@ -183,7 +183,6 @@ export default function Onboarding() {
   return (
     <div className="min-h-screen relative flex flex-col justify-center items-center px-4 py-12 overflow-hidden bg-[#FFFDF5] text-[#1E293B] selection:bg-[#F472B6] selection:text-white" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap');
         h1, h2, h3, .font-heading { font-family: 'Outfit', sans-serif; }
         .cubic {  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
         .pop-shadow { box-shadow: 4px 4px 0px 0px #1E293B; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }

@@ -3,6 +3,27 @@
 export const SCHEME_E_RETURN = 0.1269; // Equity — 12.69% p.a.
 export const SCHEME_C_RETURN = 0.0887; // Corporate Bonds — 8.87% p.a.
 export const SCHEME_G_RETURN = 0.0874; // Govt Securities — 8.74% p.a.
+ 
+export const COLORS = {
+  bg: '#FFFDF5',
+  fg: '#1E293B',
+  violet: '#8B5CF6',
+  pink: '#F472B6',
+  amber: '#FBBF24',
+  emerald: '#34D399',
+  slate: '#1E293B',
+  red: '#EF4444',
+  orange: '#F97316',
+  blue: '#3B82F6'
+};
+
+export const getScoreInfo = (score) => {
+  if (score <= 30) return { label: 'Critical', color: COLORS.red };
+  if (score <= 50) return { label: 'At Risk', color: COLORS.orange };
+  if (score <= 70) return { label: 'On Track', color: COLORS.blue };
+  if (score <= 85) return { label: 'Good', color: COLORS.violet };
+  return { label: 'Excellent', color: COLORS.emerald };
+};
 
 export function getMaxEquityPct(age) {
   if (age < 50) return 75;
@@ -44,9 +65,24 @@ export function calculateRetirement(data) {
 
   // FV of Current Corpus
   const fvCurrent = currentCorpus * Math.pow(1 + r, n);
+
+  // FV of Contributions (with potential annual step-up)
+  const stepUpRate = parseFloat(data.stepUp) || 0;
+  let fvContributions = 0;
   
-  // FV of Contributions
-  const fvContributions = monthlyContribution * (Math.pow(1 + r, n) - 1) / r;
+  if (stepUpRate > 0) {
+    // If step-up is enabled, we calculate it year by year
+    for (let k = 0; k < yearsToRetire; k++) {
+      const annualPmt = monthlyContribution * Math.pow(1 + stepUpRate, k);
+      const monthsRemaining = (yearsToRetire - k) * 12;
+      // FV of this year's 12 contributions at the end of the full term
+      fvContributions += annualPmt * (Math.pow(1 + r, 12) - 1) / r * Math.pow(1 + r, monthsRemaining - 12);
+    }
+  } else {
+    // Standard geometric series for fixed contributions
+    fvContributions = monthlyContribution * (Math.pow(1 + r, n) - 1) / r;
+  }
+  
   const projectedValue = fvCurrent + fvContributions;
 
   // Monthly spend at retirement adjusted for inflation
@@ -83,20 +119,8 @@ export function calculateRetirement(data) {
 }
 
 export function computeScenarioWithStepUp(userData) {
-  const blendedReturn = computeBlendedReturn(userData.npsEquity || 50, userData.age);
-  const r = blendedReturn / 12;
-  const years = userData.retireAge - userData.age;
-  let fvStepUp = 0;
-  for (let k = 0; k < years; k++) {
-    const pmt = userData.npsContribution * Math.pow(1.10, k);
-    const monthsRemaining = (years - k) * 12;
-    fvStepUp += pmt * (Math.pow(1 + r, monthsRemaining) - 1) / r;
-  }
-  const fvCorpus = (parseFloat(userData.npsCorpus) || 0) * Math.pow(1 + r, years * 12);
-  const projectedValue = fvCorpus + fvStepUp;
-  
-  const results = calculateRetirement(userData); // Get requiredCorpus
-  return Math.min(100, Math.round((projectedValue / results.requiredCorpus) * 100));
+  const results = calculateRetirement({ ...userData, stepUp: 0.10 });
+  return results.score;
 }
 
 export function getMilestoneAge(milestone, userData) {
@@ -161,3 +185,12 @@ export function computeTax(annualIncome, regime, deductions = 0) {
 }
 
 export const BASIC_PCT = { 'Government': 0.50, 'Private Sector': 0.40, 'Self-Employed': 1.0 };
+
+export function formatIndian(num) {
+  if (num === undefined || num === null) return '₹0';
+  const val = Math.abs(num);
+  if (val >= 10000000) return `₹${(num / 10000000).toFixed(1)} Cr`;
+  if (val >= 100000) return `₹${(num / 100000).toFixed(1)} L`;
+  if (val >= 1000) return `₹${(num / 1000).toFixed(0)}K`;
+  return `₹${Math.round(num)}`;
+}

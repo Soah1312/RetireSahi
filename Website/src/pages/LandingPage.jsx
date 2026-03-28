@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, Lock, Zap, IndianRupee, PieChart, Activity, Wallet, ShieldCheck, Sun, Bot, Check, Play } from 'lucide-react';
+import { ArrowRight, Lock, Zap, IndianRupee, PieChart, Activity, Wallet, ShieldCheck, Sun, Bot, Check, Play, Menu, X } from 'lucide-react';
 import AuthModal from '../components/AuthModal';
 import { auth, db } from '../lib/firebase';
 import { isSignInWithEmailLink, signInWithEmailLink, onAuthStateChanged, signOut } from 'firebase/auth';
@@ -115,6 +115,7 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, setUser);
@@ -157,8 +158,6 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen text-[#1E293B] overflow-x-hidden selection:bg-[#F472B6] selection:text-white" style={{ backgroundColor: COLORS.bg, fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;700&display=swap');
-        
         h1, h2, h3, h4, .font-heading { font-family: 'Outfit', sans-serif; }
         
         .pop-shadow {
@@ -242,6 +241,14 @@ export default function LandingPage() {
           75% { transform: rotate(3deg); }
         }
 
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-down {
+          animation: slideDown 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
         @media (prefers-reduced-motion: reduce) {
           * {
             animation-duration: 0.01ms !important;
@@ -258,7 +265,7 @@ export default function LandingPage() {
         style={scrolled ? { boxShadow: '0 4px 0 0 rgba(30,41,59,0.1)' } : {}}
       >
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3 cursor-pointer">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
             <div className="w-10 h-10 bg-[#8B5CF6] border-2 border-[#1E293B] rounded-full flex items-center justify-center pop-shadow">
               <span className="font-heading font-extrabold text-white text-xl">N</span>
             </div>
@@ -311,7 +318,80 @@ export default function LandingPage() {
               </>
             )}
           </div>
+
+          {/* Mobile Menu Button */}
+          <div className="md:hidden flex items-center">
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-2 border-2 border-[#1E293B] rounded-lg bg-[#F1F5F9] pop-shadow active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+            >
+              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Menu Overlay */}
+        {isMenuOpen && (
+          <div className="md:hidden bg-white border-b-2 border-[#1E293B] animate-slide-down">
+            <div className="flex flex-col p-6 gap-6 font-bold uppercase tracking-wide text-sm">
+              <a href="#features" onClick={() => setIsMenuOpen(false)} className="py-2 border-b border-[#1E293B]/10 hover:text-[#8B5CF6]">Features</a>
+              <a href="#how" onClick={() => setIsMenuOpen(false)} className="py-2 border-b border-[#1E293B]/10 hover:text-[#F472B6]">How It Works</a>
+              <button 
+                onClick={() => { navigate('/learn'); setIsMenuOpen(false); }} 
+                className="text-left py-2 border-b border-[#1E293B]/10 hover:text-[#8B5CF6]"
+              >
+                Learn
+              </button>
+              
+              <div className="pt-4 flex flex-col gap-4">
+                {user ? (
+                  <>
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 border-2 border-[#1E293B] rounded-2xl">
+                      {user.photoURL ? (
+                        <img src={user.photoURL} alt="Profile" referrerPolicy="no-referrer" className="w-10 h-10 rounded-full border-2 border-[#1E293B]" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-[#34D399] border-2 border-[#1E293B] flex items-center justify-center font-bold text-white text-lg">
+                          {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                        </div>
+                      )}
+                      <div className="flex flex-col">
+                        <span className="text-xs text-[#1E293B]/50">Logged in as</span>
+                        <span className="text-sm truncate max-w-[150px]">{user.displayName || user.email}</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => { navigate('/dashboard'); setIsMenuOpen(false); }}
+                      className="candy-btn w-full py-3 text-center" style={{ backgroundColor: COLORS.violet }}
+                    >
+                      Dashboard
+                    </button>
+                    <button 
+                      onClick={() => { signOut(auth); setIsMenuOpen(false); }}
+                      className="w-full py-3 border-2 border-[#1E293B] rounded-full hover:bg-[#F472B6] hover:text-white transition-all"
+                    >
+                      Log Out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => { setIsAuthOpen(true); setIsMenuOpen(false); }}
+                      className="w-full py-3 border-2 border-[#1E293B] rounded-full hover:bg-[#F1F5F9] transition-all"
+                    >
+                      Log In
+                    </button>
+                    <button 
+                      onClick={() => { setIsAuthOpen(true); setIsMenuOpen(false); }}
+                      className="candy-btn w-full py-3 text-center" style={{ backgroundColor: '#34D399' }}
+                    >
+                      Get Started
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       <main>
