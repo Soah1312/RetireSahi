@@ -73,9 +73,21 @@ const PageContent = () => {
   const handleSave = async (section) => {
     if (!auth.currentUser) return;
     try {
-      const newResults = calculateRetirement(formData);
+      const parsedData = {
+        ...formData,
+        age: parseInt(formData.age) || 28,
+        monthlyIncome: parseFloat(formData.monthlyIncome) || 0,
+        npsContribution: parseFloat(formData.npsContribution) || 0,
+        npsCorpus: parseFloat(formData.npsCorpus) || 0,
+        totalSavings: parseFloat(formData.totalSavings) || 0,
+        retireAge: parseInt(formData.retireAge) || 60,
+        stepUp: parseFloat(formData.stepUp) || 0,
+        npsEquity: parseFloat(formData.npsEquity) || 50,
+      };
+
+      const newResults = calculateRetirement(parsedData);
       const updatedData = { 
-        ...formData, 
+        ...parsedData, 
         ...newResults, 
         updatedAt: new Date().toISOString() 
       };

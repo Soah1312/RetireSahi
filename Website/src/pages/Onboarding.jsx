@@ -144,8 +144,19 @@ export default function Onboarding() {
   const [calcMsg, setCalcMsg] = useState(0);
   useEffect(() => {
     if (step === 8) {
+      // PARSE STRINGS TO NUMBERS
+      const parsedData = {
+        ...formData,
+        age: parseInt(formData.age) || 28,
+        monthlyIncome: parseFloat(formData.monthlyIncome) || 0,
+        npsContribution: formData.npsUsage === 'none' ? 0 : (parseFloat(formData.npsContribution) || (formData.npsUsage === 'upload' ? 4500 : 0)),
+        npsCorpus: formData.npsUsage === 'none' ? 0 : (parseFloat(formData.npsCorpus) || (formData.npsUsage === 'upload' ? 120000 : 0)),
+        totalSavings: parseFloat(formData.totalSavings) || 0,
+        retireAge: parseInt(formData.retireAge) || 60,
+      };
+
       // PERFORM CALCULATIONS USING CENTRALIZED MATH
-      const calculated = calculateRetirement(formData);
+      const calculated = calculateRetirement(parsedData);
       setResults(calculated);
 
       // SAVE DATA
@@ -153,7 +164,7 @@ export default function Onboarding() {
         try {
           if (auth?.currentUser) {
             await setDoc(doc(db, 'users', auth.currentUser.uid), {
-              ...formData,
+              ...parsedData,
               ...calculated,
               updatedAt: new Date().toISOString()
             }, { merge: true });

@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Sparkles, Send, Bot, User, Trash2, ArrowRight, Zap, Target,
   HelpCircle, AlertCircle, RefreshCcw, ExternalLink, Cpu
 } from 'lucide-react';
-import { formatIndian, calculateRetirement } from '../utils/math';
+import {
+  formatIndian,
+  calculateRetirement,
+  INFLATION_RATE,
+  SCHEME_E_RETURN,
+  ANNUITY_RATE
+} from '../utils/math';
 import DashboardLayout, { useUser } from '../components/DashboardLayout';
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
@@ -103,11 +110,24 @@ const ChatInterface = () => {
     }
   }, [userData]);
 
+  const location = useLocation();
+  const hasTriggeredInitial = useRef(false);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    if (userData && location.state?.initialPrompt && !hasTriggeredInitial.current) {
+      hasTriggeredInitial.current = true;
+      const prompt = location.state.initialPrompt;
+      // Clear location state to prevent re-triggering on refresh
+      window.history.replaceState({}, document.title);
+      handleSend(prompt);
+    }
+  }, [userData, location.state]);
 
   if (!userData) return null;
 
@@ -129,19 +149,34 @@ const ChatInterface = () => {
       You are RetireSahi AI — a friendly, knowledge-heavy financial advisor for Indians using NPS. 
       You are talking to ${displayData.firstName}.
       
-      USER CONTEXT:
-      - Age: ${displayData.age}, Retire at: ${displayData.retireAge}
-      - Score: ${displayData.score}/100 (${scoreBand})
+      PLATFORM ASSUMPTIONS (Inject these in your logic):
+      - Inflation: ${(INFLATION_RATE * 100).toFixed(0)}% p.a.
+      - Expected Equity Return: ${(SCHEME_E_RETURN * 100).toFixed(2)}% p.a.
+      - Annuity/Pension Return: ${(ANNUITY_RATE * 100).toFixed(0)}% p.a.
+
+      USER'S FINANCIAL SNAPSHOT:
+      - Current Age: ${displayData.age}
+      - Target Retirement Age: ${displayData.retireAge}
+      - Readiness Score: ${displayData.score}/100 (${scoreBand})
       - Monthly Income: ₹${displayData.monthlyIncome}
-      - Projected NPS Corpus: ₹${formatIndian(displayData.projectedValue)}
-      - Monthly Retirement Need: ₹${formatIndian(displayData.monthlySpendAtRetirement)}
-      - Sector: ${displayData.workContext}
+      - Monthly NPS Contribution: ₹${displayData.npsContribution}
+      - Current NPS Corpus: ₹${displayData.npsCorpus}
+      - Other Savings: ₹${displayData.totalSavings || 0}
+      - Equity Allocation: ${displayData.npsEquity}%
+      - Tax Regime: ${displayData.taxRegime || 'new'}
+      - Lifestyle Choice: ${displayData.lifestyle || 'comfortable'}
+
+      PROJECTION RESULTS:
+      - Projected Corpus at Retirement: ₹${formatIndian(displayData.projectedValue)}
+      - Expected Monthly Need: ₹${formatIndian(displayData.monthlySpendAtRetirement)}
+      - THE GAP: ₹${formatIndian(displayData.monthlyGap)} /month extra needed for Score 100.
 
       RULES:
-      1. Use Indian number formatting (Lakh, Crore).
+      1. Use Indian number formatting (Lakh, Crore) when speaking.
       2. Be concise but deep. No general fluff.
-      3. End with one actionable step.
+      3. If they ask how to improve, suggest closed-loop actions involving specific numbers (e.g., "Increase your ₹${displayData.npsContribution} to ₹${(Number(displayData.npsContribution) + Number(displayData.monthlyGap)).toFixed(0)}").
       4. Always mention the user's specific numbers.
+      5. Don't mention "system prompt" or "internal data" - talk like you already know their case.
     `;
 
     const chatHistory = [

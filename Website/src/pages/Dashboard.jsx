@@ -260,7 +260,10 @@ export default function Dashboard() {
   };
 
   const handleStartTour = () => {
-    setTourActive(true);
+    // Jump to top instantly so Step 1 is immediately in view and measurable
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    // Minimal delay to ensure browser has painted the jump
+    setTimeout(() => setTourActive(true), 50);
   };
 
   const navItems = [
@@ -306,6 +309,11 @@ export default function Dashboard() {
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideRight { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
         .animate-slide-right { animation: slideRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        
+        /* Tour framing */
+        [id^="tour-"] {
+          scroll-margin-top: 100px;
+        }
       `}</style>
 
       {/* --- Sidebar (Desktop) --- */}
@@ -564,8 +572,8 @@ export default function Dashboard() {
 
             {/* 3. Quick Stats Row */}
             <section id="tour-quick-stats" className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-               <QuickStat label={<>Monthly Pulse <InfoTooltip text={DASHBOARD_TIPS.monthlyPulse} /></>} value={formatIndian(userData?.npsContribution)} subtext="Investment Rate" icon={Wallet} color={COLORS.pink} />
-               <QuickStat label={<>Total Wealth <InfoTooltip text={DASHBOARD_TIPS.totalWealth} /></>} value={formatIndian((userData?.npsCorpus || 0) + (userData?.totalSavings || 0))} subtext="NPS + Other Assets" icon={PiggyBank} color={COLORS.emerald} />
+               <QuickStat label={<>Monthly Pulse <InfoTooltip text={DASHBOARD_TIPS.monthlyPulse} /></>} value={formatIndian(parseFloat(userData?.npsContribution || 0))} subtext="Investment Rate" icon={Wallet} color={COLORS.pink} />
+               <QuickStat label={<>Total Wealth <InfoTooltip text={DASHBOARD_TIPS.totalWealth} /></>} value={formatIndian(parseFloat(userData?.npsCorpus || 0) + parseFloat(userData?.totalSavings || 0))} subtext="NPS + Other Assets" icon={PiggyBank} color={COLORS.emerald} />
                <QuickStat label={<>Time Remaining <InfoTooltip text={DASHBOARD_TIPS.timeRemaining} /></>} value={`${userData?.retireAge - userData?.age} years`} subtext={`Until age ${userData?.retireAge}`} icon={Clock} color={COLORS.amber} />
                <QuickStat label={<>Future Expense <InfoTooltip text={DASHBOARD_TIPS.futureExpense} /></>} value={formatIndian(baseResults?.monthlySpendAtRetirement)} subtext="Inflation Adjusted" icon={Home} color={COLORS.violet} />
             </section>
@@ -657,13 +665,20 @@ export default function Dashboard() {
                      
                      <div className="space-y-3">
                         {['How do I hit ₹1Cr sooner?', 'Should I switch to corporate bond NPS?', 'Explain the 40% annuity rule.'].map(txt => (
-                           <button key={txt} className="w-full text-left p-3 rounded-xl border-2 border-[#1E293B] bg-[#FFFDF5] text-[10px] md:text-xs font-black uppercase tracking-widest shadow-[2px_2px_0_0_#1E293B] hover:shadow-[4px_4px_0_0_#F472B6] transition-all cursor-pointer truncate">
+                           <button 
+                             key={txt} 
+                             onClick={() => navigate('/ai-copilot', { state: { initialPrompt: txt } })}
+                             className="w-full text-left p-3 rounded-xl border-2 border-[#1E293B] bg-[#FFFDF5] text-[10px] md:text-xs font-black uppercase tracking-widest shadow-[2px_2px_0_0_#1E293B] hover:shadow-[4px_4px_0_0_#F472B6] transition-all cursor-pointer truncate"
+                           >
                               {txt}
                            </button>
                         ))}
                      </div>
-
-                     <button className="w-full py-3.5 md:py-4 bg-[#F472B6] text-white border-2 border-[#1E293B] rounded-xl font-black uppercase tracking-widest text-xs md:text-sm pop-shadow hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_0_#1E293B] cursor-pointer">
+ 
+                     <button 
+                       onClick={() => navigate('/ai-copilot')}
+                       className="w-full py-3.5 md:py-4 bg-[#F472B6] text-white border-2 border-[#1E293B] rounded-xl font-black uppercase tracking-widest text-xs md:text-sm pop-shadow hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_0_#1E293B] cursor-pointer"
+                     >
                         Ask Pulse AI →
                      </button>
                   </div>
