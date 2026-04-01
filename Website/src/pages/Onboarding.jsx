@@ -15,6 +15,12 @@ const COLORS = {
   emerald: '#34D399'
 };
 
+const MIN_AGE = 18;
+const MAX_RETIRE_AGE = 75;
+const MAX_MONTHLY_INCOME = 100000000; // 10 Cr
+const MAX_NPS_CONTRIBUTION = 100000000; // 10 Cr
+const MAX_NPS_CORPUS = 1000000000; // 100 Cr
+
 const MemphisDotGrid = ({ className = '', opacity = 0.06 }) => (
   <div 
     className={`absolute inset-0 z-0 pointer-events-none ${className}`}
@@ -85,7 +91,7 @@ const CardOption = ({ label, selected, onClick, desc }) => (
   </button>
 );
 
-const InputField = ({ label, type, name, value, onChange, suffix, placeholder, helper }) => (
+const InputField = ({ label, type, name, value, onChange, suffix, placeholder, helper, error }) => (
   <div className="w-full text-left">
     <label className="block text-sm font-bold uppercase tracking-widest text-[#1E293B]/70 mb-2">{label}</label>
     <div className="relative">
@@ -95,17 +101,26 @@ const InputField = ({ label, type, name, value, onChange, suffix, placeholder, h
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full border-2 border-[#1E293B] rounded-xl p-3 text-xl font-bold bg-white focus:outline-none focus:shadow-[4px_4px_0_0_#8B5CF6] transition-all cubic focus:-translate-y-1 block"
+        className={`w-full border-2 rounded-xl p-3 text-xl font-bold bg-white focus:outline-none transition-all cubic focus:-translate-y-1 block ${
+          error
+            ? 'border-[#EF4444] focus:shadow-[4px_4px_0_0_#EF4444]'
+            : 'border-[#1E293B] focus:shadow-[4px_4px_0_0_#8B5CF6]'
+        }`}
       />
       {suffix && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#1E293B]/40 font-bold">{suffix}</span>}
     </div>
-    {helper && <p className="mt-2 text-xs font-bold text-[#1E293B]/60 uppercase tracking-wide">{helper}</p>}
+    {error ? (
+      <p className="mt-2 text-xs font-bold text-[#EF4444] uppercase tracking-wide">{error}</p>
+    ) : (
+      helper && <p className="mt-2 text-xs font-bold text-[#1E293B]/60 uppercase tracking-wide">{helper}</p>
+    )}
   </div>
 );
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0); 
+  const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
     firstName: '',
     age: '',
@@ -122,7 +137,117 @@ export default function Onboarding() {
     taxRegime: 'new'
   });
 
-  const handleChange = (e) => setFormData({...formData, [e.target.name]: e.target.value});
+  const parsePositiveNumber = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : NaN;
+  };
+
+  const clearErrorsForFields = (fields) => {
+    setErrors((prev) => {
+      const next = { ...prev };
+      fields.forEach((field) => {
+        delete next[field];
+      });
+      return next;
+    });
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === 'age' || name === 'retireAge') {
+      clearErrorsForFields(['age', 'retireAge']);
+      return;
+    }
+
+    clearErrorsForFields([name]);
+  };
+
+  const validateAgeRules = (data) => {
+    const nextErrors = {};
+    const age = parseInt(data.age, 10);
+    const retireAge = parseInt(data.retireAge, 10) || 60;
+
+    if (!Number.isInteger(age)) {
+      nextErrors.age = 'Age is required';
+      return nextErrors;
+    }
+
+    if (age < MIN_AGE) {
+      nextErrors.age = `Age must be at least ${MIN_AGE}`;
+    }
+
+    if (retireAge > MAX_RETIRE_AGE) {
+      nextErrors.retireAge = `Retirement age cannot exceed ${MAX_RETIRE_AGE}`;
+    }
+
+    if (Number.isInteger(age) && Number.isInteger(retireAge) && age >= retireAge) {
+      nextErrors.age = `Age must be less than retirement age (${retireAge})`;
+      nextErrors.retireAge = 'Retirement age must be greater than current age';
+    }
+
+    return nextErrors;
+  };
+
+  const validateIncome = (data) => {
+    const nextErrors = {};
+    const monthlyIncome = parsePositiveNumber(data.monthlyIncome);
+
+    if (!(monthlyIncome > 0)) {
+      nextErrors.monthlyIncome = 'Monthly income must be a positive number';
+    } else if (monthlyIncome >= MAX_MONTHLY_INCOME) {
+      nextErrors.monthlyIncome = 'Monthly income must be less than ₹10 Cr';
+    }
+
+    return nextErrors;
+  };
+
+  const validateNps = (data, parsed) => {
+    const nextErrors = {};
+
+    if (!data.npsUsage) {
+      nextErrors.npsUsage = 'Choose your NPS usage option';
+      return nextErrors;
+    }
+
+    if (data.npsUsage === 'none') {
+      return nextErrors;
+    }
+
+    const contribution = parsed.npsContribution;
+    const corpus = parsed.npsCorpus;
+
+    if (!(contribution > 0)) {
+      nextErrors.npsContribution = 'NPS contribution must be a positive number';
+    } else if (contribution >= MAX_NPS_CONTRIBUTION) {
+      nextErrors.npsContribution = 'NPS contribution is too large (sanity cap exceeded)';
+    }
+
+    if (!(corpus > 0)) {
+      nextErrors.npsCorpus = 'NPS corpus must be a positive number';
+    } else if (corpus >= MAX_NPS_CORPUS) {
+      nextErrors.npsCorpus = 'NPS corpus is too large (sanity cap exceeded)';
+    }
+
+    return nextErrors;
+  };
+
+  const validateStep1 = (data) => {
+    const nextErrors = {};
+    if (!data.firstName?.trim()) {
+      nextErrors.firstName = 'First name is required';
+    }
+    return { ...nextErrors, ...validateAgeRules(data) };
+  };
+
+  const validateAll = (data, parsed) => {
+    return {
+      ...validateStep1(data),
+      ...validateIncome(data),
+      ...validateNps(data, parsed),
+    };
+  };
 
   const parsedData = useMemo(() => ({
     ...formData,
@@ -144,30 +269,68 @@ export default function Onboarding() {
     }
   }, [step]);
 
-  const advance = () => setStep(s => s + 1);
+  const handleNext = () => {
+    let stepErrors = {};
+
+    if (step === 1) {
+      stepErrors = validateStep1(formData);
+    }
+
+    if (step === 3) {
+      stepErrors = validateIncome(formData);
+    }
+
+    if (step === 4) {
+      stepErrors = validateNps(formData, parsedData);
+    }
+
+    if (step === 5) {
+      stepErrors = validateAgeRules(formData);
+    }
+
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...stepErrors }));
+      return;
+    }
+
+    if (step === 1) clearErrorsForFields(['firstName', 'age', 'retireAge']);
+    if (step === 3) clearErrorsForFields(['monthlyIncome']);
+    if (step === 4) clearErrorsForFields(['npsUsage', 'npsContribution', 'npsCorpus']);
+    if (step === 5) clearErrorsForFields(['age', 'retireAge']);
+
+    setStep((s) => s + 1);
+  };
+
+  const handleSubmit = async () => {
+    const submitErrors = validateAll(formData, parsedData);
+    if (Object.keys(submitErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...submitErrors }));
+      return;
+    }
+
+    try {
+      if (auth?.currentUser) {
+        const finalResults = calculateRetirement(parsedData);
+        const payload = {
+          ...parsedData,
+          ...finalResults,
+          updatedAt: new Date().toISOString(),
+        };
+        const encrypted = await encryptUserData(payload, auth.currentUser.uid);
+        await setDoc(doc(db, 'users', auth.currentUser.uid), encrypted, { merge: true });
+      }
+      setCalcMsg(0);
+      setStep(8);
+    } catch (error) {
+      console.error('Firestore Error: ', error);
+    }
+  };
+
   const back = () => setStep(s => Math.max(1, s - 1));
 
   const [calcMsg, setCalcMsg] = useState(0);
   useEffect(() => {
     if (step === 8) {
-      // SAVE DATA
-      const saveData = async () => {
-        try {
-          if (auth?.currentUser) {
-            const payload = {
-              ...parsedData,
-              ...results,
-              updatedAt: new Date().toISOString()
-            };
-            const encrypted = await encryptUserData(payload, auth.currentUser.uid);
-            await setDoc(doc(db, 'users', auth.currentUser.uid), encrypted, { merge: true });
-          }
-        } catch (error) {
-          console.error("Firestore Error: ", error);
-        }
-      };
-      saveData();
-
       const sequence = [
         () => setCalcMsg(1),
         () => setCalcMsg(2),
@@ -176,7 +339,7 @@ export default function Onboarding() {
       ];
       sequence.forEach((fn, i) => setTimeout(fn, (i + 1) * 800));
     }
-  }, [step, parsedData, results]);
+  }, [step]);
 
   const formatCurrency = (val) => {
     if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)} Cr`;
@@ -244,8 +407,8 @@ export default function Onboarding() {
             {step === 1 && (
               <div className="animate-fade-in space-y-6">
                 <h2 className="font-heading font-extrabold text-2xl md:text-3xl leading-tight text-center mb-6">Let’s calculate your retirement score in under 60 seconds.</h2>
-                <InputField label="First Name" type="text" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="e.g. Rahul" />
-                <InputField label="Age" type="number" name="age" value={formData.age} onChange={handleChange} placeholder="e.g. 28" />
+                <InputField label="First Name" type="text" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="e.g. Rahul" error={errors.firstName} />
+                <InputField label="Age" type="number" name="age" value={formData.age} onChange={handleChange} placeholder="e.g. 28" error={errors.age} />
               </div>
             )}
 
@@ -267,9 +430,16 @@ export default function Onboarding() {
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-2xl text-[#1E293B]/50">₹</span>
                   <input 
                     type="number" name="monthlyIncome" value={formData.monthlyIncome} onChange={handleChange}
-                    placeholder="85,000" className="w-full border-2 border-[#1E293B] rounded-xl p-4 pl-10 text-2xl font-black bg-white focus:outline-none focus:shadow-[4px_4px_0_0_#8B5CF6] transition-all cubic block"
+                    placeholder="85,000" className={`w-full border-2 rounded-xl p-4 pl-10 text-2xl font-black bg-white focus:outline-none transition-all cubic block ${
+                      errors.monthlyIncome
+                        ? 'border-[#EF4444] focus:shadow-[4px_4px_0_0_#EF4444]'
+                        : 'border-[#1E293B] focus:shadow-[4px_4px_0_0_#8B5CF6]'
+                    }`}
                   />
                 </div>
+                {errors.monthlyIncome && (
+                  <p className="text-xs font-bold text-[#EF4444] uppercase tracking-wide">{errors.monthlyIncome}</p>
+                )}
                 <div className="bg-[#FFFDF5] border-2 border-[#1E293B] p-4 rounded-xl flex gap-3 text-sm font-bold text-[#1E293B]/80 shadow-[2px_2px_0_0_#1E293B]">
                   <Sparkles className="w-5 h-5 text-[#FBBF24] shrink-0" />
                   We use this to estimate your standard of living and retirement trajectory.
@@ -301,8 +471,8 @@ export default function Onboarding() {
                   <div className="animate-fade-in space-y-4 pt-4 border-t-2 border-dashed border-[#1E293B]/20">
                     <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 text-center">Tier I is your main retirement account</p>
                     <div className="grid grid-cols-2 gap-4">
-                       <InputField label="Monthly (₹)" type="number" name="npsContribution" value={formData.npsContribution} onChange={handleChange} placeholder="5,00,000" />
-                       <InputField label="Total Corpus (₹)" type="number" name="npsCorpus" value={formData.npsCorpus} onChange={handleChange} placeholder="1.2L" />
+                        <InputField label="Monthly (₹)" type="number" name="npsContribution" value={formData.npsContribution} onChange={handleChange} placeholder="5,00,000" error={errors.npsContribution} />
+                        <InputField label="Total Corpus (₹)" type="number" name="npsCorpus" value={formData.npsCorpus} onChange={handleChange} placeholder="1.2L" error={errors.npsCorpus} />
                     </div>
                   </div>
                 )}
@@ -318,11 +488,17 @@ export default function Onboarding() {
                     <span className="text-lg md:text-xl text-[#1E293B]/50 font-bold uppercase tracking-widest absolute -right-16 md:-right-20 bottom-3 md:bottom-4">Years</span>
                   </div>
                   <input 
-                    type="range" min="50" max="70" 
+                    type="range" min="50" max="75" 
                     value={formData.retireAge} 
-                    onChange={e => setFormData({...formData, retireAge: parseInt(e.target.value)})}
+                    onChange={e => {
+                      setFormData({ ...formData, retireAge: parseInt(e.target.value, 10) });
+                      clearErrorsForFields(['age', 'retireAge']);
+                    }}
                     className="w-full h-3 bg-[#E2E8F0] border-2 border-[#1E293B] rounded-lg appearance-none cursor-pointer accent-[#8B5CF6]"
                   />
+                  {errors.retireAge && (
+                    <p className="mt-3 text-xs font-bold text-[#EF4444] uppercase tracking-wide">{errors.retireAge}</p>
+                  )}
                   <p className="mt-8 font-bold text-[#1E293B]/60 uppercase tracking-widest text-xs md:text-sm">Earlier retirement requires higher contributions.</p>
                 </div>
               </div>
@@ -379,7 +555,7 @@ export default function Onboarding() {
 
           <div className="pt-4 border-t-2 border-[#1E293B]/10 shrink-0 mt-auto">
              <button 
-                onClick={advance}
+               onClick={step === 7 ? handleSubmit : handleNext}
                 disabled={
                   (step === 1 && (!formData.firstName || !formData.age)) ||
                   (step === 2 && !formData.workContext) ||
