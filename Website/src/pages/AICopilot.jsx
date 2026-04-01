@@ -3,6 +3,8 @@ import { useLocation } from 'react-router-dom';
 import {
   Sparkles, Send, AlertCircle, RefreshCcw, ExternalLink, Cpu
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   formatIndian,
   calculateRetirement,
@@ -15,35 +17,122 @@ import { auth, db } from '../lib/firebase';
 import AIPrivacyChoice from '../components/AIPrivacyChoice';
 import { GROQ_PRIVACY_MODE_FIELDS, GROQ_FULL_MODE_FIELDS } from '../utils/encryption';
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "openai/gpt-oss-120b"; // Updated to high-capacity model
+const AI_ENDPOINT = '/api/groq';
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const MODEL = 'openai/gpt-oss-120b';
+const USE_DIRECT_GROQ_DEV = import.meta.env.DEV && !!GROQ_API_KEY;
 
-async function callGroq(messages) {
-  if (!GROQ_API_KEY) {
-    throw new Error('MISSING_KEY');
+const markdownComponents = {
+  p: (props) => <p className="mb-3 last:mb-0 leading-relaxed" {...props} />,
+  strong: (props) => <strong className="font-black text-[#1E293B]" {...props} />,
+  em: (props) => <em className="italic" {...props} />,
+  ul: (props) => <ul className="my-3 ml-5 list-disc space-y-1" {...props} />,
+  ol: (props) => <ol className="my-3 ml-5 list-decimal space-y-1" {...props} />,
+  li: (props) => <li className="leading-relaxed" {...props} />,
+  h1: (props) => <h1 className="mt-5 mb-3 text-2xl font-black" {...props} />,
+  h2: (props) => <h2 className="mt-4 mb-2 text-xl font-black" {...props} />,
+  h3: (props) => <h3 className="mt-3 mb-2 text-lg font-bold" {...props} />,
+  a: (props) => <a className="text-[#8B5CF6] underline decoration-2 underline-offset-2" target="_blank" rel="noreferrer" {...props} />,
+  blockquote: (props) => <blockquote className="my-4 border-l-4 border-[#F472B6] pl-4 italic text-slate-600" {...props} />,
+  code: ({ inline, children, ...props }) => (
+    inline ? (
+      <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.92em] text-[#1E293B]" {...props}>
+        {children}
+      </code>
+    ) : (
+      <code className="block overflow-x-auto rounded-xl bg-slate-900 px-4 py-3 font-mono text-sm text-slate-100" {...props}>
+        {children}
+      </code>
+    )
+  ),
+  pre: (props) => <pre className="my-4 overflow-x-auto rounded-xl bg-slate-900 p-0" {...props} />,
+  table: (props) => (
+    <div className="my-4 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+      <table className="min-w-full border-collapse text-sm" {...props} />
+    </div>
+  ),
+  thead: (props) => <thead className="bg-slate-100" {...props} />,
+  th: (props) => <th className="border-b border-slate-200 px-3 py-2 text-left font-black text-[#1E293B]" {...props} />,
+  td: (props) => <td className="border-b border-slate-100 px-3 py-2 align-top" {...props} />,
+  hr: (props) => <hr className="my-4 border-slate-200" {...props} />,
+};
+
+async function streamGroq(messages, onChunk, onDone, onError) {
+  let response;
+
+  if (USE_DIRECT_GROQ_DEV) {
+    response = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages,
+        temperature: 0.7,
+        max_tokens: 1024,
+        stream: true,
+      }),
+    });
+  } else {
+    if (!auth.currentUser) {
+      throw new Error('AUTH_REQUIRED');
+    }
+
+    const idToken = await auth.currentUser.getIdToken();
+    response = await fetch(AI_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+        'x-firebase-auth': idToken,
+      },
+      body: JSON.stringify({
+        messages,
+        idToken,
+        stream: true,
+      }),
+    });
   }
 
-  const response = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GROQ_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: messages,
-      temperature: 0.7,
-      max_tokens: 1024,
-      stream: false
-    })
-  });
-
-  const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error?.message || 'Failed to call AI');
+    const error = await response.json().catch(() => ({}));
+    onError(error.error?.message || 'Stream failed');
+    return;
   }
-  return data.choices[0].message.content;
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') {
+        onDone();
+        return;
+      }
+      try {
+        const parsed = JSON.parse(data);
+        const chunk = parsed.choices?.[0]?.delta?.content;
+        if (chunk) onChunk(chunk);
+      } catch {
+        // Skip malformed chunks
+      }
+    }
+  }
+
+  onDone();
 }
 
 const QuickPrompt = ({ text, onClick }) => (
@@ -57,6 +146,7 @@ const QuickPrompt = ({ text, onClick }) => (
 
 const MessageBubble = ({ role, content, timestamp }) => {
   const isAI = role === 'assistant' || role === 'system';
+  const renderedContent = isAI ? (content ?? '') : (content ?? '');
   return (
     <div className={`flex flex-col ${isAI ? 'items-start' : 'items-end'}`}>
       <div className="flex items-center gap-2 mb-1">
@@ -70,9 +160,17 @@ const MessageBubble = ({ role, content, timestamp }) => {
           : 'bg-[#8B5CF6] text-white rounded-[18px_18px_4px_18px]'
           }`}
       >
-        <div className={`text-sm md:text-base leading-relaxed whitespace-pre-wrap ${!isAI && 'font-bold'}`}>
-          {content}
-        </div>
+        {isAI ? (
+          <div className="text-sm md:text-base leading-relaxed text-[#1E293B]">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {renderedContent}
+            </ReactMarkdown>
+          </div>
+        ) : (
+          <div className="text-sm md:text-base leading-relaxed whitespace-pre-wrap font-bold text-white">
+            {content}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -91,7 +189,39 @@ const LoadingBubble = () => (
         0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
         30% { transform: translateY(-6px); opacity: 1; }
       }
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+      }
     `}</style>
+  </div>
+);
+
+const StreamingBubble = ({ content }) => (
+  <div className="flex flex-col items-start">
+    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+      RetireSahi AI • typing...
+    </div>
+    <div
+      className="max-w-[85%] md:max-w-[75%] p-4 border-2 border-[#1E293B] pop-shadow bg-white"
+      style={{ borderRadius: '18px 18px 18px 4px' }}
+    >
+      <div className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">
+        {content}
+        <span
+          style={{
+            display: 'inline-block',
+            width: 2,
+            height: '1.1em',
+            background: '#8B5CF6',
+            marginLeft: 2,
+            verticalAlign: 'text-bottom',
+            animation: 'blink 1s step-end infinite',
+          }}
+          aria-hidden="true"
+        />
+      </div>
+    </div>
   </div>
 );
 
@@ -100,14 +230,10 @@ const ChatInterface = () => {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingContent, setStreamingContent] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(null);
   const scrollRef = useRef(null);
-
-  useEffect(() => {
-    if (userData) {
-      localStorage.setItem('retiresahi_user_data', JSON.stringify(userData));
-    }
-  }, [userData]);
 
   const location = useLocation();
   const hasTriggeredInitial = useRef(false);
@@ -262,18 +388,46 @@ Always use ${displayData.firstName}'s actual computed numbers.
     ];
 
     try {
-      const responseText = await callGroq(chatHistory);
-      setMessages(prev => [...prev, { role: 'assistant', content: responseText, timestamp: new Date() }]);
+      setIsStreaming(true);
+      setStreamingContent('');
+      let fullContent = '';
+
+      await streamGroq(
+        chatHistory,
+        (chunk) => {
+          if (isLoading) setIsLoading(false);
+          fullContent += chunk;
+          setStreamingContent(fullContent);
+          if (scrollRef.current) {
+            scrollRef.current.scrollTo({
+              top: scrollRef.current.scrollHeight,
+              behavior: 'smooth',
+            });
+          }
+        },
+        () => {
+          setMessages((prev) => [...prev, {
+            role: 'assistant',
+            content: fullContent,
+            timestamp: new Date(),
+          }]);
+          setStreamingContent('');
+          setIsStreaming(false);
+        },
+        (errMsg) => {
+          setError(errMsg);
+          setStreamingContent('');
+          setIsStreaming(false);
+        }
+      );
     } catch (err) {
-      if (err.message === 'MISSING_KEY') {
-        setError('API_KEY_MISSING');
-      } else {
-        setError(err.message || 'Something went wrong');
-      }
+      setError(err.message || 'Something went wrong');
+      setStreamingContent('');
+      setIsStreaming(false);
     } finally {
       setIsLoading(false);
     }
-  }, [displayData, inputValue, messages, privacyMode, isFullMode]);
+  }, [displayData, inputValue, messages, privacyMode, isFullMode, isLoading]);
 
   useEffect(() => {
     if (userData && location.state?.initialPrompt && !hasTriggeredInitial.current) {
@@ -317,9 +471,13 @@ Always use ${displayData.firstName}'s actual computed numbers.
         ) : (
           <div className="max-w-4xl mx-auto w-full space-y-8">
             {messages.map((m, i) => (
-              <MessageBubble key={i} {...m} />
+              <MessageBubble key={m.id || i} {...m} />
             ))}
-            {isLoading && <LoadingBubble />}
+            {isStreaming && streamingContent
+              ? <StreamingBubble content={streamingContent} />
+              : isLoading && !isStreaming
+                ? <LoadingBubble />
+                : null}
             {error && (
               <div className="flex flex-col items-start max-w-xl">
                 <div className="bg-white border-4 border-[#1E293B] p-6 pop-shadow-pink space-y-4 rounded-2xl">
@@ -328,20 +486,28 @@ Always use ${displayData.firstName}'s actual computed numbers.
                     <p className="text-sm font-bold text-[#1E293B] uppercase tracking-widest">Houston, we have a problem</p>
                   </div>
 
-                  {error === 'API_KEY_MISSING' ? (
+                  {error === 'AI_BACKEND_NOT_CONFIGURED' ? (
                     <div className="space-y-4">
                       <p className="text-sm font-bold text-[#1E293B]/70 leading-relaxed">
-                        The Groq API key is missing. Please add <code className="bg-slate-100 px-1 rounded">VITE_GROQ_API_KEY</code> to your environment variables.
+                        The AI server is not configured yet. Add <code className="bg-slate-100 px-1 rounded">GROQ_API_KEY</code> and Firebase Admin env vars in Vercel, then redeploy.
                       </p>
                       <a
-                        href="https://console.groq.com/keys"
+                        href="https://vercel.com/docs/environment-variables"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-[#8B5CF6] hover:underline"
                       >
-                        Get a free key here <ExternalLink className="w-3 h-3" />
+                        Open env var docs <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
+                  ) : error === 'AUTH_REQUIRED' ? (
+                    <p className="text-sm font-bold text-[#1E293B]/70 leading-relaxed">
+                      Your session expired. Please sign in again and retry.
+                    </p>
+                  ) : error === 'RATE_LIMIT' ? (
+                    <p className="text-sm font-bold text-[#1E293B]/70 leading-relaxed">
+                      Too many AI requests right now. Please wait a moment and try again.
+                    </p>
                   ) : (
                     <p className="text-sm font-bold text-slate-500">{error}</p>
                   )}
@@ -372,7 +538,7 @@ Always use ${displayData.firstName}'s actual computed numbers.
             />
             <button
               onClick={() => handleSend()}
-              disabled={isLoading || !inputValue.trim()}
+              disabled={isLoading || isStreaming || !inputValue.trim()}
               className="w-10 h-10 md:w-14 md:h-14 rounded-full bg-[#34D399] border-2 border-[#1E293B] flex items-center justify-center text-white pop-shadow transition-all hover:-translate-y-1 hover:translate-x-[-1px] disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
             >
               {isLoading ? (
