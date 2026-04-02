@@ -77,6 +77,40 @@ const PageContent = () => {
   const [toast, setToast] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  const parseNumericInput = (value) => {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : 0;
+    }
+
+    if (typeof value !== 'string') {
+      return 0;
+    }
+
+    const normalized = value.replace(/[₹,\s]/g, '').trim();
+    if (!normalized) return 0;
+
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const parseIntegerInput = (value, fallback) => {
+    const parsed = parseNumericInput(value);
+    if (!Number.isFinite(parsed) || parsed === 0) return fallback;
+    return Math.floor(parsed);
+  };
+
+  const toParsedData = (source) => ({
+    ...source,
+    age: parseIntegerInput(source.age, 28),
+    monthlyIncome: parseNumericInput(source.monthlyIncome),
+    npsContribution: parseNumericInput(source.npsContribution),
+    npsCorpus: parseNumericInput(source.npsCorpus),
+    totalSavings: parseNumericInput(source.totalSavings),
+    retireAge: parseIntegerInput(source.retireAge, 60),
+    stepUp: parseNumericInput(source.stepUp),
+    npsEquity: parseNumericInput(source.npsEquity) || 50,
+  });
+
   const toggleEditSection = (sectionName) => {
     if (editingSection === sectionName) {
       setEditingSection(null);
@@ -95,17 +129,7 @@ const PageContent = () => {
   const handleSave = async () => {
     if (!auth.currentUser) return;
     try {
-      const parsedData = {
-        ...formData,
-        age: parseInt(formData.age) || 28,
-        monthlyIncome: parseFloat(formData.monthlyIncome) || 0,
-        npsContribution: parseFloat(formData.npsContribution) || 0,
-        npsCorpus: parseFloat(formData.npsCorpus) || 0,
-        totalSavings: parseFloat(formData.totalSavings) || 0,
-        retireAge: parseInt(formData.retireAge) || 60,
-        stepUp: parseFloat(formData.stepUp) || 0,
-        npsEquity: parseFloat(formData.npsEquity) || 50,
-      };
+      const parsedData = toParsedData(formData);
 
       if (parsedData.monthlyIncome <= 0) {
         showToast('Monthly income must be a positive number.', 'red');
@@ -177,7 +201,7 @@ const PageContent = () => {
   if (!userData) return null;
 
   const baseResults = calculateRetirement(userData);
-  const simulatedResults = calculateRetirement(formData);
+  const simulatedResults = calculateRetirement(toParsedData(formData));
 
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-4xl mx-auto pb-24">

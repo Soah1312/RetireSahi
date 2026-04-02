@@ -22,6 +22,30 @@ const MAX_MONTHLY_INCOME = 100000000; // 10 Cr
 const MAX_NPS_CONTRIBUTION = 100000000; // 10 Cr
 const MAX_NPS_CORPUS = 1000000000; // 100 Cr
 
+const parseNumericInput = (value) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : NaN;
+  }
+
+  if (typeof value !== 'string') {
+    return NaN;
+  }
+
+  const normalized = value.replace(/[₹,\s]/g, '').trim();
+  if (!normalized) return NaN;
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : NaN;
+};
+
+const parsePositiveNumber = (value) => parseNumericInput(value);
+
+const parseIntegerInput = (value, fallback) => {
+  const parsed = parseNumericInput(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.floor(parsed);
+};
+
 const MemphisDotGrid = ({ className = '', opacity = 0.06 }) => (
   <div 
     className={`absolute inset-0 z-0 pointer-events-none ${className}`}
@@ -138,11 +162,6 @@ export default function Onboarding() {
     taxRegime: 'new'
   });
 
-  const parsePositiveNumber = (value) => {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : NaN;
-  };
-
   const clearErrorsForFields = (fields) => {
     setErrors((prev) => {
       const next = { ...prev };
@@ -167,8 +186,8 @@ export default function Onboarding() {
 
   const validateAgeRules = (data) => {
     const nextErrors = {};
-    const age = parseInt(data.age, 10);
-    const retireAge = parseInt(data.retireAge, 10) || 60;
+    const age = parseIntegerInput(data.age, NaN);
+    const retireAge = parseIntegerInput(data.retireAge, 60);
 
     if (!Number.isInteger(age)) {
       nextErrors.age = 'Age is required';
@@ -256,12 +275,12 @@ export default function Onboarding() {
 
   const parsedData = useMemo(() => ({
     ...formData,
-    age: parseInt(formData.age) || 28,
-    monthlyIncome: parseFloat(formData.monthlyIncome) || 0,
-    npsContribution: formData.npsUsage === 'none' ? 0 : (parseFloat(formData.npsContribution) || (formData.npsUsage === 'upload' ? 4500 : 0)),
-    npsCorpus: formData.npsUsage === 'none' ? 0 : (parseFloat(formData.npsCorpus) || (formData.npsUsage === 'upload' ? 120000 : 0)),
-    totalSavings: parseFloat(formData.totalSavings) || 0,
-    retireAge: parseInt(formData.retireAge) || 60,
+    age: parseIntegerInput(formData.age, 28),
+    monthlyIncome: parseNumericInput(formData.monthlyIncome) || 0,
+    npsContribution: formData.npsUsage === 'none' ? 0 : (parseNumericInput(formData.npsContribution) || (formData.npsUsage === 'upload' ? 4500 : 0)),
+    npsCorpus: formData.npsUsage === 'none' ? 0 : (parseNumericInput(formData.npsCorpus) || (formData.npsUsage === 'upload' ? 120000 : 0)),
+    totalSavings: parseNumericInput(formData.totalSavings) || 0,
+    retireAge: parseIntegerInput(formData.retireAge, 60),
   }), [formData]);
 
   const results = useMemo(() => calculateRetirement(parsedData), [parsedData]);
