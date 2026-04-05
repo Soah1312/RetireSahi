@@ -1,24 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useAuthSession } from './authSessionContext';
 
 export default function ProtectedRoute({ children }) {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const { currentUser, authLoading } = useAuthSession();
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        navigate('/');
-      } else {
-        setLoading(false);
-      }
-    });
-    return () => unsub();
-  }, [navigate]);
+    if (!authLoading && !currentUser) {
+      navigate('/');
+    }
+  }, [authLoading, currentUser, navigate]);
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FFFDF5]">
         <div className="animate-pulse flex flex-col items-center">
@@ -27,6 +21,10 @@ export default function ProtectedRoute({ children }) {
         </div>
       </div>
     );
+  }
+
+  if (!currentUser) {
+    return null;
   }
 
   return children;

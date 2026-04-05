@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, X, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 
 /**
  * TourOverlay — full-screen spotlight guided tour.
@@ -12,70 +12,106 @@ export default function TourOverlay({ steps, onComplete, onSkip }) {
   const [pageRect, setPageRect] = useState(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const cardRef = useRef(null);
+  const targetElementRef = useRef(null);
+  const pendingMeasureFrameRef = useRef(null);
   
   const step = steps[currentStep];
 
-  // ─── Measure target element (Document Relative) ─────────────────────
-  useEffect(() => {
-    if (!step) return;
-    
-    let rafId;
-    let scrollAttempts = 0;
-    let scrolledOnce = false;
+  const syncTargetRect = useCallback(() => {
+    if (!step?.targetId) return false;
 
-    const measureAndSync = () => {
-      const el = document.getElementById(step.targetId);
-      if (el) {
-        // Only scroll on exactly the first successful locate of the new step
-        if (!scrolledOnce) {
-          scrolledOnce = true;
-          // Smooth scroll browser to the element
-          el.scrollIntoView({ 
-            block: 'center', 
-            behavior: 'smooth' 
-          });
-        }
+    const el = targetElementRef.current || document.getElementById(step.targetId);
+    if (!el) return false;
 
-        const r = el.getBoundingClientRect();
-        const pad = 12;
-        
-        // Convert viewport coordinates to document-absolute coordinates
-        // This stops the rect from updating while the user is simply scrolling!
-        const newRect = {
-          x: r.x + window.scrollX - pad,
-          y: r.y + window.scrollY - pad,
-          w: r.width + pad * 2,
-          h: r.height + pad * 2,
-        };
-        
-        setPageRect(prev => {
-          if (prev && 
-              Math.abs(prev.x - newRect.x) < 0.5 && 
-              Math.abs(prev.y - newRect.y) < 0.5 && 
-              Math.abs(prev.w - newRect.w) < 0.5 && 
-              Math.abs(prev.h - newRect.h) < 0.5) return prev;
-          return newRect;
-        });
+    targetElementRef.current = el;
 
-      } else {
-        // Element not mounted yet, keep trying
-        scrollAttempts++;
-        if (scrollAttempts > 60) return; // give up tracking
-      }
-      
-      rafId = requestAnimationFrame(measureAndSync);
+    const r = el.getBoundingClientRect();
+    const pad = 12;
+    const nextRect = {
+      x: r.x + window.scrollX - pad,
+      y: r.y + window.scrollY - pad,
+      w: r.width + pad * 2,
+      h: r.height + pad * 2,
     };
 
-    // Tiny delay so we don't measure during route transitions
+    setPageRect((prev) => {
+      if (
+        prev &&
+        Math.abs(prev.x - nextRect.x) < 0.5 &&
+        Math.abs(prev.y - nextRect.y) < 0.5 &&
+        Math.abs(prev.w - nextRect.w) < 0.5 &&
+        Math.abs(prev.h - nextRect.h) < 0.5
+      ) {
+        return prev;
+      }
+      return nextRect;
+    });
+
+    return true;
+  }, [step]);
+
+  // ─── Measure target element (Document Relative) ─────────────────────
+  useEffect(() => {
+    if (!step?.targetId) return;
+
+    targetElementRef.current = null;
+
+    let rafId = 0;
+    let attempts = 0;
+
+    const locateTarget = () => {
+      const el = document.getElementById(step.targetId);
+
+      if (!el) {
+        attempts += 1;
+        if (attempts <= 60) {
+          rafId = requestAnimationFrame(locateTarget);
+        }
+        return;
+      }
+
+      targetElementRef.current = el;
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      syncTargetRect();
+    };
+
     const timer = setTimeout(() => {
-      rafId = requestAnimationFrame(measureAndSync);
+      rafId = requestAnimationFrame(locateTarget);
     }, 50);
 
     return () => {
       clearTimeout(timer);
-      if (rafId) cancelAnimationFrame(rafId);
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
     };
-  }, [currentStep, step]);
+  }, [currentStep, step, syncTargetRect]);
+
+  useEffect(() => {
+    if (!step?.targetId) return;
+
+    const scheduleMeasure = () => {
+      if (pendingMeasureFrameRef.current) return;
+
+      pendingMeasureFrameRef.current = requestAnimationFrame(() => {
+        pendingMeasureFrameRef.current = null;
+        syncTargetRect();
+      });
+    };
+
+    window.addEventListener('scroll', scheduleMeasure, { passive: true });
+    window.addEventListener('resize', scheduleMeasure);
+
+    return () => {
+      window.removeEventListener('scroll', scheduleMeasure);
+      window.removeEventListener('resize', scheduleMeasure);
+
+      if (pendingMeasureFrameRef.current) {
+        cancelAnimationFrame(pendingMeasureFrameRef.current);
+        pendingMeasureFrameRef.current = null;
+      }
+    };
+  }, [step, syncTargetRect]);
 
   // ─── Keyboard handling ───────────────────────────────────────────
   useEffect(() => {
@@ -85,15 +121,27 @@ export default function TourOverlay({ steps, onComplete, onSkip }) {
         onSkip();
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        goNext();
+        if (isTransitioning) return;
+        if (currentStep < steps.length - 1) {
+          setIsTransitioning(true);
+          setCurrentStep((s) => s + 1);
+          setTimeout(() => setIsTransitioning(false), 500);
+        } else {
+          onComplete();
+        }
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        goPrev();
+        if (isTransitioning) return;
+        if (currentStep > 0) {
+          setIsTransitioning(true);
+          setCurrentStep((s) => s - 1);
+          setTimeout(() => setIsTransitioning(false), 500);
+        }
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  });
+  }, [currentStep, isTransitioning, onComplete, onSkip, steps.length]);
 
   // ─── Focus trap ──────────────────────────────────────────────────
   useEffect(() => {

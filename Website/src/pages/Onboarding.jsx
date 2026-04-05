@@ -6,6 +6,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { calculateRetirement, getScoreBand } from '../utils/math';
 import { encryptUserData } from '../utils/encryption';
 import { INITIAL_USER_DATA } from '../components/UserContext';
+import { writeUserProfileCache } from '../lib/userProfileCache';
 import {
   createDefaultLifestyleConfig,
   LIFESTYLE_MODES,
@@ -551,6 +552,7 @@ export default function Onboarding() {
         };
         const encrypted = await encryptUserData(payload, auth.currentUser.uid);
         await setDoc(doc(db, 'users', auth.currentUser.uid), encrypted, { merge: true });
+        writeUserProfileCache(auth.currentUser.uid, payload);
       }
       setCalcMsg(0);
       setStep(9);

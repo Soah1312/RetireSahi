@@ -23,6 +23,7 @@ import { calculateRetirement, formatIndian, INFLATION_RATE } from '../utils/math
 import DashboardLayout from '../components/DashboardLayout';
 import { useUser } from '../components/UserContext';
 import { encryptUserData } from '../utils/encryption';
+import { writeUserProfileCache } from '../lib/userProfileCache';
 import {
   LIFESTYLE_MULTIPLIERS,
   LIFESTYLE_MODES,
@@ -527,7 +528,9 @@ const PageContent = () => {
 
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
-      setUserData((prev) => ({ ...prev, ...dataToSave }));
+      const nextUserData = { ...userData, ...dataToSave };
+      setUserData(nextUserData);
+      writeUserProfileCache(auth.currentUser.uid, nextUserData);
     } catch (error) {
       console.error(error);
     } finally {

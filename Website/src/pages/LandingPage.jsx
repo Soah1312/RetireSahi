@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { ArrowRight, Lock, Zap, IndianRupee, PieChart, Activity, Wallet, ShieldCheck, Sun, Bot, Check, Play, Menu, X } from 'lucide-react';
 import AuthModal from '../components/AuthModal';
 import { auth, db } from '../lib/firebase';
-import { isSignInWithEmailLink, signInWithEmailLink, onAuthStateChanged, signOut } from 'firebase/auth';
+import { isSignInWithEmailLink, signInWithEmailLink, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { getScoreBand } from '../utils/math';
+import { useAuthSession } from '../components/authSessionContext';
 
 const COLORS = {
   bg: '#FFFDF5',
@@ -115,13 +116,8 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [user, setUser] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, setUser);
-    return () => unsub();
-  }, []);
+  const { currentUser: user } = useAuthSession();
 
   useEffect(() => {
     document.title = "RetireSahi | Your Retirement, Demystified";

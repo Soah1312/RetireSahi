@@ -292,6 +292,8 @@ const ChatInterface = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(null);
   const scrollRef = useRef(null);
+  const streamChunkCounterRef = useRef(0);
+  const pendingScrollFrameRef = useRef(null);
 
   const location = useLocation();
   const hasTriggeredInitial = useRef(false);
@@ -301,6 +303,25 @@ const ChatInterface = () => {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingScrollFrameRef.current) {
+        cancelAnimationFrame(pendingScrollFrameRef.current);
+      }
+    };
+  }, []);
+
+  const scheduleStreamScroll = useCallback(() => {
+    if (pendingScrollFrameRef.current) return;
+
+    pendingScrollFrameRef.current = requestAnimationFrame(() => {
+      pendingScrollFrameRef.current = null;
+      if (scrollRef.current) {
+        scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'auto' });
+      }
+    });
+  }, []);
 
   const displayData = useMemo(() => {
     if (!userData) return null;
@@ -473,11 +494,9 @@ Never output hidden reasoning, chain-of-thought, or tags like <think>.
           if (isLoading) setIsLoading(false);
           fullContent += chunk;
           setStreamingContent(sanitizeAssistantContent(fullContent));
-          if (scrollRef.current) {
-            scrollRef.current.scrollTo({
-              top: scrollRef.current.scrollHeight,
-              behavior: 'smooth',
-            });
+          streamChunkCounterRef.current += 1;
+          if (streamChunkCounterRef.current % 5 === 0 || chunk.includes('\n')) {
+            scheduleStreamScroll();
           }
         },
           onMeta: (meta) => {
@@ -493,12 +512,14 @@ Never output hidden reasoning, chain-of-thought, or tags like <think>.
             fallbackUsed: Boolean(currentMeta?.fallbackUsed),
             timestamp: new Date(),
           }]);
+          streamChunkCounterRef.current = 0;
           setStreamingContent('');
           setStreamingMeta(null);
           setIsStreaming(false);
         },
           onError: (errMsg) => {
           setError(errMsg);
+          streamChunkCounterRef.current = 0;
           setStreamingContent('');
           setStreamingMeta(null);
           setIsStreaming(false);
@@ -513,7 +534,7 @@ Never output hidden reasoning, chain-of-thought, or tags like <think>.
     } finally {
       setIsLoading(false);
     }
-  }, [displayData, inputValue, messages, privacyMode, isFullMode, isLoading]);
+  }, [displayData, inputValue, messages, privacyMode, isFullMode, isLoading, scheduleStreamScroll]);
 
   useEffect(() => {
     if (userData && location.state?.initialPrompt && !hasTriggeredInitial.current) {

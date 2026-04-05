@@ -7,12 +7,14 @@ import {
 } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import TourOverlay from '../components/TourOverlay';
 import InfoTooltip from '../components/InfoTooltip';
 import { TOUR_STEPS, DASHBOARD_TIPS } from '../constants/tooltips';
 import { decryptUserData, encryptUserData } from '../utils/encryption';
 import { RETIREMENT_MODES } from '../constants/investmentSchemes.js';
+import { useAuthSession } from '../components/authSessionContext';
+import { getOrLoadUserProfile, invalidateUserProfileCache, writeUserProfileCache } from '../lib/userProfileCache';
 import { 
   calculateRetirement, 
   getMilestoneAge, 
@@ -128,6 +130,7 @@ const MilestoneItem = ({ milestone, age, achieved, color }) => (
 
 export default function Dashboard() {
   const navigate = useNavigate();
+   const { currentUser, authLoading } = useAuthSession();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
@@ -145,32 +148,64 @@ export default function Dashboard() {
   // State checks and Auth logic
   useEffect(() => {
     document.title = "RetireSahi | Dashboard";
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        if (snap.exists()) {
-               const data = await decryptUserData(snap.data(), user.uid);
-          setUserData(data);
-          setSimValues({
+      if (authLoading) {
+         return;
+      }
+
+      let cancelled = false;
+
+      const loadDashboard = async () => {
+         if (!currentUser) {
+            navigate('/');
+            setLoading(false);
+            return;
+         }
+
+         const data = await getOrLoadUserProfile({
+            uid: currentUser.uid,
+            loader: async () => {
+               const snap = await getDoc(doc(db, 'users', currentUser.uid));
+               if (!snap.exists()) {
+                  return null;
+               }
+               return decryptUserData(snap.data(), currentUser.uid);
+            },
+         });
+
+         if (!data) {
+            navigate('/onboarding');
+            setLoading(false);
+            return;
+         }
+
+         if (cancelled) return;
+
+         setUserData(data);
+         setSimValues({
             npsContribution: data.npsContribution || 5000,
             retireAge: data.retireAge || 60,
             stepUp: data.stepUp || 0,
             npsEquity: data.npsEquity || 50
-          });
-          // Auto-trigger tour on first visit
-          if (!localStorage.getItem('retiresahi_tour_seen')) {
+         });
+
+         if (!localStorage.getItem('retiresahi_tour_seen')) {
             setTimeout(() => setTourActive(true), 800);
-          }
-        } else {
-          navigate('/onboarding');
-        }
-      } else {
-        navigate('/');
-      }
-      setLoading(false);
-    });
-    return () => unsub();
-  }, [navigate]);
+         }
+
+         setLoading(false);
+      };
+
+      loadDashboard().catch((error) => {
+         if (!cancelled) {
+            console.error('Failed to load dashboard data:', error);
+            setLoading(false);
+         }
+      });
+
+      return () => {
+         cancelled = true;
+      };
+   }, [authLoading, currentUser, navigate]);
 
   // Derived metrics from user data using math utility
   const baseResults = useMemo(() => userData ? calculateRetirement(userData) : null, [userData]);
@@ -271,6 +306,7 @@ export default function Dashboard() {
    const isNonNpsOnly = baseResults?.retirementMode === RETIREMENT_MODES.NON_NPS_ONLY;
 
   const handleLogout = async () => {
+      invalidateUserProfileCache(currentUser?.uid);
     await signOut(auth);
     navigate('/');
   };
@@ -373,8 +409,8 @@ export default function Dashboard() {
                {!isSidebarCollapsed && <span className="whitespace-nowrap animate-fade-in">Take the Tour</span>}
              </button>
              <div className={`flex items-center p-2 bg-white/5 rounded-2xl ${isSidebarCollapsed ? 'flex-col gap-3 justify-center' : 'gap-3'}`}>
-                {auth.currentUser?.photoURL ? (
-                  <img src={auth.currentUser.photoURL} alt="User" referrerPolicy="no-referrer" className="w-10 h-10 shrink-0 rounded-full border-2 border-[#8B5CF6]" />
+                        {currentUser?.photoURL ? (
+                           <img src={currentUser.photoURL} alt="User" referrerPolicy="no-referrer" className="w-10 h-10 shrink-0 rounded-full border-2 border-[#8B5CF6]" />
                 ) : (
                   <div className="w-10 h-10 shrink-0 rounded-full bg-[#8B5CF6] border-2 border-white flex items-center justify-center font-bold text-white uppercase text-lg">
                     {userData?.firstName?.[0] || 'U'}
@@ -484,8 +520,8 @@ export default function Dashboard() {
 
                   <div className="pt-6 border-t border-white/10 mt-auto">
                      <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl">
-                        {auth.currentUser?.photoURL ? (
-                          <img src={auth.currentUser.photoURL} alt="User" referrerPolicy="no-referrer" className="w-9 h-9 rounded-full border-2 border-[#8B5CF6]" />
+                                    {currentUser?.photoURL ? (
+                                       <img src={currentUser.photoURL} alt="User" referrerPolicy="no-referrer" className="w-9 h-9 rounded-full border-2 border-[#8B5CF6]" />
                         ) : (
                           <div className="w-9 h-9 rounded-full bg-[#8B5CF6] border-2 border-white flex items-center justify-center font-bold text-white text-base">
                             {userData?.firstName?.[0] || 'U'}
@@ -918,15 +954,17 @@ export default function Dashboard() {
                     <button 
                       onClick={async () => {
                          const user = auth.currentUser;
-                         if (user) {
-                                        const payload = {
+                                     if (user) {
+                                                            const payload = {
                              ...simValues,
                              ...simResults,
                              updatedAt: new Date().toISOString()
                                         };
                                         const encrypted = await encryptUserData(payload, user.uid);
                                         await setDoc(doc(db, 'users', user.uid), encrypted, { merge: true });
-                           setUserData({ ...userData, ...simValues, ...simResults });
+                                        const nextUserData = { ...userData, ...simValues, ...simResults };
+                                        setUserData(nextUserData);
+                                        writeUserProfileCache(user.uid, nextUserData);
                            setSimulatorOpen(false);
                          }
                       }}

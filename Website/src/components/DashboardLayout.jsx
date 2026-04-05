@@ -5,10 +5,12 @@ import {
 } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { getScoreBand, calculateRetirement } from '../utils/math';
 import { UserContext, withInitialUserData } from './UserContext';
 import { decryptUserData } from '../utils/encryption';
+import { useAuthSession } from './authSessionContext';
+import { getOrLoadUserProfile, invalidateUserProfileCache } from '../lib/userProfileCache';
 
 const SIDEBAR_STORAGE_KEY = 'retiresahi_sidebar_collapsed';
 
@@ -19,6 +21,7 @@ export default function DashboardLayout({ children, title, userData: passedUserD
   const [loading, setLoading] = useState(!passedUserData);
   const [loadError, setLoadError] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { currentUser, authLoading } = useAuthSession();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true';
@@ -32,29 +35,58 @@ export default function DashboardLayout({ children, title, userData: passedUserD
       return;
     }
 
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    if (authLoading) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadProfile = async () => {
       try {
-        if (user) {
-          const snap = await getDoc(doc(db, 'users', user.uid));
-          if (snap.exists()) {
-            const decrypted = await decryptUserData(snap.data(), user.uid);
-            setFetchedUserData(decrypted);
-            setLoadError(null);
-          } else {
-            navigate('/onboarding');
-          }
-        } else {
+        if (!currentUser) {
           navigate('/');
+          return;
+        }
+
+        const profile = await getOrLoadUserProfile({
+          uid: currentUser.uid,
+          loader: async () => {
+            const snap = await getDoc(doc(db, 'users', currentUser.uid));
+            if (!snap.exists()) {
+              return null;
+            }
+
+            return decryptUserData(snap.data(), currentUser.uid);
+          },
+        });
+
+        if (!profile) {
+          navigate('/onboarding');
+          return;
+        }
+
+        if (!cancelled) {
+          setFetchedUserData(profile);
+          setLoadError(null);
         }
       } catch (err) {
-        console.error('Failed to load dashboard profile:', err);
-        setLoadError(err?.message || 'Unable to load your profile right now.');
+        if (!cancelled) {
+          console.error('Failed to load dashboard profile:', err);
+          setLoadError(err?.message || 'Unable to load your profile right now.');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    });
-    return () => unsub();
-  }, [navigate, passedUserData]);
+    };
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, currentUser, navigate, passedUserData]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -62,6 +94,7 @@ export default function DashboardLayout({ children, title, userData: passedUserD
   }, [isSidebarCollapsed]);
 
   const handleLogout = async () => {
+    invalidateUserProfileCache(currentUser?.uid);
     await signOut(auth);
     navigate('/');
   };
@@ -149,8 +182,8 @@ export default function DashboardLayout({ children, title, userData: passedUserD
 
           <div className="pt-8 border-t border-white/10 mt-auto w-full">
             <div className={`flex items-center p-2 bg-white/5 rounded-2xl ${isSidebarCollapsed ? 'flex-col gap-3 justify-center' : 'gap-3'}`}>
-              {auth.currentUser?.photoURL ? (
-                <img src={auth.currentUser.photoURL} alt="User" referrerPolicy="no-referrer" className="w-10 h-10 shrink-0 rounded-full border-2 border-[#8B5CF6]" />
+              {currentUser?.photoURL ? (
+                <img src={currentUser.photoURL} alt="User" referrerPolicy="no-referrer" className="w-10 h-10 shrink-0 rounded-full border-2 border-[#8B5CF6]" />
               ) : (
                 <div className="w-10 h-10 shrink-0 rounded-full bg-[#8B5CF6] border-2 border-white flex items-center justify-center font-bold text-white uppercase text-lg">
                   {userData?.firstName?.[0] || 'U'}
@@ -249,8 +282,8 @@ export default function DashboardLayout({ children, title, userData: passedUserD
 
                 <div className="pt-6 border-t border-white/10 mt-auto">
                   <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl">
-                    {auth.currentUser?.photoURL ? (
-                      <img src={auth.currentUser.photoURL} alt="User" referrerPolicy="no-referrer" className="w-9 h-9 rounded-full border-2 border-[#8B5CF6]" />
+                    {currentUser?.photoURL ? (
+                      <img src={currentUser.photoURL} alt="User" referrerPolicy="no-referrer" className="w-9 h-9 rounded-full border-2 border-[#8B5CF6]" />
                     ) : (
                       <div className="w-9 h-9 rounded-full bg-[#8B5CF6] border-2 border-white flex items-center justify-center font-bold text-white text-base">
                         {userData?.firstName?.[0] || 'U'}

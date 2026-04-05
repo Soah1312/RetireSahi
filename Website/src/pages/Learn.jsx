@@ -6,9 +6,8 @@ import {
   ArrowUpFromLine, LogOut, TrendingDown, AlertCircle, BarChart2, 
   Baby, ArrowRight, ChevronDown, CheckCircle2, Menu, X, Bell
 } from 'lucide-react';
-import { auth } from '../lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 import AuthModal from '../components/AuthModal';
+import { useAuthSession } from '../components/authSessionContext';
 
 const COLORS = {
   bg: '#FFFDF5',
@@ -94,34 +93,54 @@ const ExpandableCard = ({ icon: Icon, title, teaser, expandedContent, accentColo
 
 export default function Learn() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { currentUser: user } = useAuthSession();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('basics');
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     document.title = "RetireSahi | Know Your NPS";
-    const unsub = onAuthStateChanged(auth, setUser);
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
-      
-      // Update active category based on section position
-      const sections = ['basics', 'tax', 'retirement', 'rules'];
-      for (const section of sections) {
-        const el = document.getElementById(section);
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          if (rect.top <= 200 && rect.bottom >= 200) {
-            setActiveCategory(section);
-            break;
-          }
-        }
-      }
     };
-    window.addEventListener('scroll', handleScroll);
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
     return () => {
-      unsub();
       window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    const sectionIds = ['basics', 'tax', 'retirement', 'rules'];
+    const sections = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter(Boolean);
+
+    if (!sections.length) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+
+        if (visible.length > 0) {
+          setActiveCategory(visible[0].target.id);
+        }
+      },
+      {
+        root: null,
+        rootMargin: '-35% 0px -45% 0px',
+        threshold: [0.15, 0.35, 0.6],
+      }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+
+    return () => {
+      observer.disconnect();
     };
   }, []);
 

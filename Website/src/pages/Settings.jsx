@@ -13,6 +13,7 @@ import { useUser } from '../components/UserContext';
 import InfoTooltip from '../components/InfoTooltip';
 import { SETTINGS_TIPS } from '../constants/tooltips';
 import { encryptUserData } from '../utils/encryption';
+import { writeUserProfileCache } from '../lib/userProfileCache';
 import {
   OTHER_SCHEME_CONFIGS,
   RETIREMENT_MODES,
@@ -229,6 +230,7 @@ const PageContent = () => {
       const newScore = newResults.score;
       
       setUserData(updatedData);
+      writeUserProfileCache(auth.currentUser.uid, updatedData);
       setEditingSection(null);
       
       if (newScore > oldScore) {
@@ -755,7 +757,9 @@ const PageContent = () => {
               onClick={async () => {
                 const newMode = userData.aiPrivacyMode === 'full' ? 'privacy' : 'full';
                 await setDoc(doc(db, 'users', auth.currentUser.uid), { aiPrivacyMode: newMode }, { merge: true });
-                setUserData((prev) => ({ ...prev, aiPrivacyMode: newMode }));
+                const nextUserData = { ...userData, aiPrivacyMode: newMode };
+                setUserData(nextUserData);
+                writeUserProfileCache(auth.currentUser.uid, nextUserData);
                 showToast(`AI mode switched to ${newMode === 'full' ? 'Full' : 'Privacy'} mode.`, 'amber');
               }}
               className="touch-target text-white border-2 border-[#1E293B] rounded-full px-4 py-2 font-['Plus_Jakarta_Sans'] font-bold text-[0.75rem] uppercase tracking-[0.06em] shadow-[3px_3px_0_#1E293B]"
