@@ -23,6 +23,11 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const PRIMARY_MODEL = import.meta.env.VITE_GROQ_PRIMARY_MODEL || 'qwen/qwen3-32b';
 const FALLBACK_MODEL = import.meta.env.VITE_GROQ_FALLBACK_MODEL || 'openai/gpt-oss-120b';
 const USE_DIRECT_GROQ_DEV = import.meta.env.DEV && !!GROQ_API_KEY;
+const ASSISTANT_PLACEHOLDER_STAGES = [
+  'Thinking...',
+  'Reading your profile...',
+  'Drafting your answer...',
+];
 
 const formatModelTag = (model) => `[${model || 'unknown-model'}]`;
 
@@ -233,9 +238,9 @@ const MessageBubble = ({ role, content, timestamp, model, fallbackUsed }) => {
   );
 };
 
-const LoadingBubble = () => (
+const LoadingBubble = ({ statusText }) => (
   <div className="flex flex-col items-start">
-    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">RetireSahi AI is thinking...</div>
+    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">RetireSahi AI • {statusText}</div>
     <div className="bg-white border-2 border-[#1E293B] rounded-[18px_18px_18px_4px] p-4 pop-shadow flex gap-1.5">
       <div className="w-2 h-2 bg-[#F472B6] rounded-full animate-[dotPulse_1s_infinite_0ms]" />
       <div className="w-2 h-2 bg-[#F472B6] rounded-full animate-[dotPulse_1s_infinite_200ms]" />
@@ -290,6 +295,7 @@ const ChatInterface = () => {
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingMeta, setStreamingMeta] = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [assistantPlaceholderStageIndex, setAssistantPlaceholderStageIndex] = useState(0);
   const [error, setError] = useState(null);
   const scrollRef = useRef(null);
   const streamChunkCounterRef = useRef(0);
@@ -311,6 +317,28 @@ const ChatInterface = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const shouldShowPlaceholder = (isLoading || isStreaming) && !streamingContent;
+    if (!shouldShowPlaceholder) {
+      setAssistantPlaceholderStageIndex(0);
+      return;
+    }
+
+    setAssistantPlaceholderStageIndex(0);
+    const intervalId = setInterval(() => {
+      setAssistantPlaceholderStageIndex((prev) => {
+        if (prev >= ASSISTANT_PLACEHOLDER_STAGES.length - 1) {
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 900);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isLoading, isStreaming, streamingContent]);
 
   const scheduleStreamScroll = useCallback(() => {
     if (pendingScrollFrameRef.current) return;
@@ -384,6 +412,7 @@ const ChatInterface = () => {
     const userMessage = { role: 'user', content: text, timestamp: new Date() };
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
+    setAssistantPlaceholderStageIndex(0);
     setIsLoading(true);
     setError(null);
 
@@ -552,6 +581,8 @@ Never output hidden reasoning, chain-of-thought, or tags like <think>.
     return <AIPrivacyChoice onSelect={handlePrivacySelect} firstName={userData.firstName} />;
   }
 
+  const showAssistantPlaceholder = (isLoading || isStreaming) && !streamingContent;
+
   return (
     <div className="h-[calc(100dvh-64px)] lg:h-[calc(100vh-64px)] flex flex-col relative overflow-hidden">
       <div
@@ -582,8 +613,8 @@ Never output hidden reasoning, chain-of-thought, or tags like <think>.
             ))}
             {isStreaming && streamingContent
               ? <StreamingBubble content={streamingContent} streamMeta={streamingMeta} />
-              : isLoading && !isStreaming
-                ? <LoadingBubble />
+              : showAssistantPlaceholder
+                ? <LoadingBubble statusText={ASSISTANT_PLACEHOLDER_STAGES[assistantPlaceholderStageIndex]} />
                 : null}
             {error && (
               <div className="flex flex-col items-start max-w-xl">
