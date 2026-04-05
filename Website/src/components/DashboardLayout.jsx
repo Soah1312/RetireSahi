@@ -170,12 +170,13 @@ export default function DashboardLayout({ children, title, userData: passedUserD
         </aside>
 
         {/* Mobile Nav Bottom */}
-        <nav className="fixed bottom-0 left-0 w-full bg-white h-16 border-t border-slate-200 flex lg:hidden items-center justify-around z-50 px-2 pb-safe">
+        <nav className="fixed bottom-0 left-0 w-full bg-white h-[calc(4rem+env(safe-area-inset-bottom))] border-t border-slate-200 flex lg:hidden items-center justify-around z-50 px-2 pt-1 pb-[env(safe-area-inset-bottom)]">
           {navItems.slice(0, 5).map(item => (
             <button 
               key={item.label}
               onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center gap-1 ${location.pathname === item.path ? 'text-[#8B5CF6]' : 'text-slate-400'}`}
+              className={`touch-target min-w-[56px] flex flex-col items-center justify-center gap-1 ${location.pathname === item.path ? 'text-[#8B5CF6]' : 'text-slate-400'}`}
+              aria-label={item.label}
             >
               <item.icon className="w-5 h-5" strokeWidth={2.5} />
               {location.pathname === item.path && <span className="text-[9px] font-black uppercase tracking-widest leading-none">{item.label}</span>}
@@ -184,7 +185,7 @@ export default function DashboardLayout({ children, title, userData: passedUserD
         </nav>
 
         {/* Main Content */}
-        <main className={`min-h-screen flex flex-col relative pb-20 lg:pb-0 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-60'}`}>
+        <main className={`min-h-screen flex flex-col relative pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-60'}`}>
           <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(#1E293B 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
 
           {/* Top Bar */}
@@ -192,7 +193,8 @@ export default function DashboardLayout({ children, title, userData: passedUserD
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="lg:hidden p-2 -ml-2 text-[#1E293B] hover:bg-slate-50 rounded-lg transition-colors"
+                className="lg:hidden touch-target p-2 -ml-2 text-[#1E293B] hover:bg-slate-50 rounded-lg transition-colors"
+                aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               >
                 {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>

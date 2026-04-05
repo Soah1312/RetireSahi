@@ -190,7 +190,7 @@ const ModeSwitcher = ({ mode, onChange }) => (
     <button
       type="button"
       onClick={() => onChange(LIFESTYLE_MODES.PRESET)}
-      className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[2px] transition-all ${
+      className={`touch-target px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[2px] transition-all ${
         mode === LIFESTYLE_MODES.PRESET ? 'bg-[#8B5CF6] text-white' : 'text-[#1E293B]/60'
       }`}
     >
@@ -199,7 +199,7 @@ const ModeSwitcher = ({ mode, onChange }) => (
     <button
       type="button"
       onClick={() => onChange(LIFESTYLE_MODES.CUSTOM)}
-      className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[2px] transition-all ${
+      className={`touch-target px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[2px] transition-all ${
         mode === LIFESTYLE_MODES.CUSTOM ? 'bg-[#8B5CF6] text-white' : 'text-[#1E293B]/60'
       }`}
     >
@@ -263,6 +263,7 @@ const CustomLifestyleEditor = ({ categoryAmounts, onCategoryAmountChange, monthl
                   type="number"
                   min="0"
                   step="500"
+                  inputMode="decimal"
                   value={displayAmount}
                   onChange={(e) => onCategoryAmountChange(cat.id, Number(e.target.value))}
                   className="w-full border-2 border-[#1E293B]/20 rounded-lg pl-8 pr-3 py-2 text-sm font-black text-left focus:outline-none focus:shadow-[2px_2px_0_0_#8B5CF6]"
@@ -551,7 +552,7 @@ const PageContent = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-12 max-w-6xl mx-auto pb-32">
+    <div className="p-3 sm:p-4 md:p-8 space-y-10 sm:space-y-12 max-w-6xl mx-auto pb-[calc(13rem+env(safe-area-inset-bottom))] lg:pb-32">
       <section className="space-y-6">
         <div className="text-center md:text-left space-y-2">
           <h2 className="font-heading font-extrabold text-2xl md:text-4xl">What kind of retirement do you want?</h2>
@@ -678,7 +679,7 @@ const PageContent = () => {
         </div>
       </section>
 
-      <div className="fixed bottom-0 left-0 dashboard-fixed-offset right-0 h-20 bg-white border-t-2 border-[#1E293B] z-40 px-6 flex items-center justify-between shadow-[0_-8px_30px_rgba(0,0,0,0.05)]">
+      <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] lg:bottom-0 left-0 dashboard-fixed-offset right-0 min-h-[4.75rem] lg:h-20 bg-white border-t-2 border-[#1E293B] z-40 px-3 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-0 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 shadow-[0_-8px_30px_rgba(0,0,0,0.05)]">
         <div className="flex flex-col">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Simulating</span>
           <span className="text-sm font-bold text-[#1E293B] uppercase tracking-wide">
@@ -691,7 +692,7 @@ const PageContent = () => {
             type="button"
             onClick={handleReset}
             disabled={!hasChanges}
-            className="px-6 py-2.5 rounded-full font-black text-xs uppercase tracking-widest text-slate-400 enabled:hover:text-[#1E293B] transition-colors flex items-center gap-2 disabled:opacity-40"
+            className="touch-target px-4 sm:px-6 py-2.5 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest text-slate-400 enabled:hover:text-[#1E293B] transition-colors flex items-center gap-2 disabled:opacity-40"
           >
             <RotateCcw className="w-4 h-4" /> Reset
           </button>
@@ -699,7 +700,7 @@ const PageContent = () => {
             type="button"
             onClick={handleSave}
             disabled={isSaving || !hasChanges}
-            className="px-8 py-3 bg-[#8B5CF6] border-2 border-[#1E293B] rounded-full shadow-[4px_4px_0_0_#1E293B] enabled:hover:-translate-y-0.5 enabled:active:translate-y-0.5 enabled:active:shadow-[2px_2px_0_0_#1E293B] transition-all text-white text-xs font-black uppercase tracking-[2px] flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="touch-target px-5 sm:px-8 py-3 bg-[#8B5CF6] border-2 border-[#1E293B] rounded-full shadow-[4px_4px_0_0_#1E293B] enabled:hover:-translate-y-0.5 enabled:active:translate-y-0.5 enabled:active:shadow-[2px_2px_0_0_#1E293B] transition-all text-white text-[10px] sm:text-xs font-black uppercase tracking-[2px] flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? 'Saving...' : (
               <>
@@ -711,7 +712,7 @@ const PageContent = () => {
       </div>
 
       {showToast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+        <div className="fixed bottom-[calc(10rem+env(safe-area-inset-bottom))] lg:bottom-24 left-1/2 -translate-x-1/2 z-50 animate-slide-up px-3 w-full max-w-xl">
           <div className="bg-[#FBBF24] border-2 border-[#1E293B] px-6 py-3 rounded-full font-black text-xs uppercase tracking-widest shadow-[4px_4px_0_0_#1E293B] flex items-center gap-3">
             Dream updated! Your dashboard reflects your new plan.
           </div>

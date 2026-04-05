@@ -65,12 +65,12 @@ const ExpandableCard = ({ icon: Icon, title, teaser, expandedContent, accentColo
     >
       <button 
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full p-6 flex items-start gap-4 text-left cursor-pointer transition-colors"
+        className="w-full p-4 sm:p-6 flex items-start gap-3 sm:gap-4 text-left cursor-pointer transition-colors"
       >
         <div className={`w-14 h-14 rounded-full border-2 border-[#1E293B] flex items-center justify-center shrink-0 shadow-[4px_4px_0_0_#1E293B] group-hover:rotate-6 transition-all cubic`} style={{ backgroundColor: accentColor }}>
             {React.createElement(Icon, { className: 'w-8 h-8 text-white', strokeWidth: 2.5 })}
         </div>
-        <div className="flex-1 min-w-0 pr-4 mt-1">
+          <div className="flex-1 min-w-0 pr-2 sm:pr-4 mt-1">
            <h3 className="font-heading font-extrabold text-[#1E293B] text-xl mb-1 truncate">{title}</h3>
            <p className="text-[#1E293B]/60 font-medium text-sm leading-relaxed">{teaser}</p>
         </div>
@@ -81,7 +81,7 @@ const ExpandableCard = ({ icon: Icon, title, teaser, expandedContent, accentColo
 
       <div className={`grid transition-all duration-500 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
         <div className="overflow-hidden">
-          <div className="px-6 pb-8 ml-[72px] pr-10 border-t border-slate-100 pt-6">
+          <div className="px-4 sm:px-6 pb-6 sm:pb-8 ml-0 sm:ml-[72px] pr-4 sm:pr-10 border-t border-slate-100 pt-4 sm:pt-6">
             <div className="text-[#1E293B]/80 font-medium leading-relaxed prose prose-slate max-w-none">
               {expandedContent}
             </div>
@@ -166,7 +166,7 @@ export default function Learn() {
         className={`bg-white border-b-2 border-[#1E293B] sticky top-0 z-[60] transition-shadow duration-300 w-full`}
         style={scrolled ? { boxShadow: '0 4px 0 0 rgba(30,41,59,0.1)' } : {}}
       >
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
             <div className="w-10 h-10 bg-[#8B5CF6] border-2 border-[#1E293B] rounded-full flex items-center justify-center pop-shadow">
               <span className="font-heading font-extrabold text-white text-xl">R</span>
@@ -184,7 +184,7 @@ export default function Learn() {
             {user ? (
                <button 
                 onClick={() => navigate('/dashboard')}
-                className="candy-btn px-6 py-2.5 font-bold uppercase tracking-widest text-[#1E293B] cursor-pointer bg-[#34D399]"
+                className="touch-target candy-btn px-4 sm:px-6 py-2.5 font-bold uppercase tracking-widest text-[#1E293B] cursor-pointer bg-[#34D399] text-xs sm:text-sm"
               >
                 Go Dashboard
               </button>
@@ -193,7 +193,7 @@ export default function Learn() {
                 <button onClick={() => setIsAuthOpen(true)} className="hover:text-[#8B5CF6] transition-colors cursor-pointer hidden md:block">Sign In</button>
                 <button 
                   onClick={() => setIsAuthOpen(true)}
-                  className="candy-btn px-6 py-2.5 font-bold uppercase tracking-widest text-[#1E293B] cursor-pointer bg-[#34D399]"
+                  className="touch-target candy-btn px-4 sm:px-6 py-2.5 font-bold uppercase tracking-widest text-[#1E293B] cursor-pointer bg-[#34D399] text-xs sm:text-sm"
                 >
                   Get Started Free
                 </button>
@@ -204,7 +204,7 @@ export default function Learn() {
       </nav>
 
       {/* --- Page Header --- */}
-      <header className="relative py-24 px-6 overflow-hidden border-b-2 border-[#1E293B] bg-[#FFF8E7]">
+      <header className="relative py-16 sm:py-24 px-4 sm:px-6 overflow-hidden border-b-2 border-[#1E293B] bg-[#FFF8E7]">
          <MemphisDotGrid opacity={0.06} />
          <Confetti />
          <div className="max-w-4xl mx-auto text-center relative z-10">
@@ -221,13 +221,13 @@ export default function Learn() {
       </header>
 
       {/* --- Category Tab Bar (Sticky) --- */}
-      <div className="sticky top-[74px] md:top-[82px] z-50 bg-white border-b-2 border-[#1E293B] overflow-x-auto no-scrollbar scroll-smooth">
-         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between md:justify-center gap-4 min-w-max">
+      <div className="sticky top-[66px] md:top-[82px] z-50 bg-white border-b-2 border-[#1E293B] overflow-x-auto no-scrollbar scroll-smooth mobile-scroll-lock">
+         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-start md:justify-center gap-3 sm:gap-4 min-w-max">
             {categories.map(cat => (
               <button 
                 key={cat.id}
                 onClick={() => scrollTo(cat.id)}
-                className={`flex-shrink-0 px-6 py-2.5 rounded-full font-black uppercase tracking-widest text-xs border-2 border-transparent transition-all cubic ${activeCategory === cat.id ? 'bg-[#8B5CF6] text-white border-[#1E293B] pop-shadow' : 'text-[#1E293B]/40 hover:bg-[#FBBF24] hover:text-[#1E293B] hover:border-[#1E293B]'}`}
+                className={`touch-target flex-shrink-0 px-4 sm:px-6 py-2 rounded-full font-black uppercase tracking-widest text-[10px] sm:text-xs border-2 border-transparent transition-all cubic ${activeCategory === cat.id ? 'bg-[#8B5CF6] text-white border-[#1E293B] pop-shadow' : 'text-[#1E293B]/40 hover:bg-[#FBBF24] hover:text-[#1E293B] hover:border-[#1E293B]'}`}
               >
                 {cat.label}
               </button>
@@ -235,7 +235,7 @@ export default function Learn() {
          </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-6 py-20 space-y-32">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-20 space-y-24 sm:space-y-32">
          
          {/* SECTION 1: Basics */}
          <section id="basics" className="scroll-mt-40 space-y-12">

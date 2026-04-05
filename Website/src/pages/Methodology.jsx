@@ -45,7 +45,7 @@ const FormulaBox = ({ title, formula, example }) => (
 const SectionCard = ({ title, icon: Icon, accent, children }) => (
   <section className="bg-white border-2 border-[#1E293B] rounded-[24px] overflow-hidden pop-shadow">
     <div className="h-2 w-full" style={{ backgroundColor: accent }} />
-    <div className="p-8 space-y-8">
+    <div className="p-5 sm:p-8 space-y-6 sm:space-y-8">
       <div className="flex items-center gap-4">
         <div
           className="w-12 h-12 rounded-full border-2 border-[#1E293B] flex items-center justify-center shadow-[3px_3px_0_0_#1E293B] shrink-0"
@@ -66,7 +66,7 @@ const PageContent = () => {
   }, []);
 
   return (
-    <div className="p-4 md:p-8 space-y-12 max-w-5xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-8 space-y-10 sm:space-y-12 max-w-5xl mx-auto">
       <div className="flex justify-end">
         <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border-2 border-[#1E293B] font-black uppercase tracking-widest text-[9px] bg-[#FBBF24]/10">
           <span className="text-[#FBBF24]">LAST UPDATED: BUDGET 2025</span>
@@ -156,7 +156,7 @@ const PageContent = () => {
 
           <div className="space-y-4">
             <h4 className="font-black uppercase tracking-[3px] text-[10px] text-[#1E293B]/50">Lifestyle Income Replacement</h4>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               {Object.entries(LIFESTYLE_MULTIPLIERS).map(([key, val]) => (
                 <div key={key} className="text-center p-3 border-2 border-[#1E293B] rounded-xl bg-white">
                   <div className="font-black text-lg text-[#1E293B]">{val * 100}%</div>

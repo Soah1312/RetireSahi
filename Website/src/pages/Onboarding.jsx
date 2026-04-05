@@ -127,7 +127,7 @@ const FinalScoreArc = ({ score = 82 }) => {
 const CardOption = ({ label, selected, onClick, desc }) => (
   <button 
     onClick={onClick}
-    className={`w-full p-4 text-left border-2 rounded-xl transition-all cubic tracking-wide cursor-pointer flex flex-col justify-center ${
+    className={`w-full touch-target p-4 text-left border-2 rounded-xl transition-all cubic tracking-wide cursor-pointer flex flex-col justify-center ${
       selected 
         ? 'bg-[#1E293B] border-[#1E293B] text-white shadow-[4px_4px_0_0_#FBBF24] translate-x-[-2px] translate-y-[-2px] scale-[1.02]' 
         : 'bg-white border-[#1E293B] text-[#1E293B] shadow-[2px_2px_0_0_#1E293B] hover:bg-[#F1F5F9] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0_0_#1E293B]'
@@ -148,7 +148,8 @@ const InputField = ({ label, type, name, value, onChange, suffix, placeholder, h
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className={`w-full border-2 rounded-xl p-3 text-xl font-bold bg-white focus:outline-none transition-all cubic focus:-translate-y-1 block ${
+        inputMode={type === 'number' ? 'decimal' : undefined}
+        className={`w-full border-2 rounded-xl p-3 text-lg sm:text-xl font-bold bg-white focus:outline-none transition-all cubic focus:-translate-y-1 block ${
           error
             ? 'border-[#EF4444] focus:shadow-[4px_4px_0_0_#EF4444]'
             : 'border-[#1E293B] focus:shadow-[4px_4px_0_0_#8B5CF6]'
@@ -188,6 +189,7 @@ const TaxProfileField = ({ label, name, value, max, step = 5000, onNumberChange,
         value={value}
         min="0"
         max={max}
+        inputMode="decimal"
         onChange={onNumberChange}
         className="w-full border-2 border-[#1E293B] rounded-xl p-2.5 pl-8 text-sm font-bold bg-white focus:outline-none focus:shadow-[3px_3px_0_0_#8B5CF6]"
       />
@@ -579,7 +581,7 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col justify-center items-center px-4 py-12 overflow-hidden bg-[#FFFDF5] text-[#1E293B] selection:bg-[#F472B6] selection:text-white" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
+    <div className="min-h-screen relative flex flex-col justify-center items-center px-3 sm:px-4 py-6 sm:py-12 overflow-hidden bg-[#FFFDF5] text-[#1E293B] selection:bg-[#F472B6] selection:text-white" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
       <style>{`
         h1, h2, h3, .font-heading { font-family: 'Outfit', sans-serif; }
         .cubic {  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -614,7 +616,7 @@ export default function Onboarding() {
       )}
 
       {step >= 1 && step <= 8 && (
-        <div className="z-10 w-full max-w-lg bg-white border-2 border-[#1E293B] rounded-3xl p-6 md:p-8 pop-shadow animate-slide-up flex flex-col relative overflow-hidden h-auto min-h-[450px] max-h-[90vh]">
+        <div className="z-10 w-full max-w-lg bg-white border-2 border-[#1E293B] rounded-3xl p-4 sm:p-6 md:p-8 pop-shadow animate-slide-up flex flex-col relative overflow-hidden h-auto min-h-[420px] sm:min-h-[450px] max-h-[calc(100dvh-1rem)] sm:max-h-[90vh]">
           <div className="w-full mb-6 shrink-0 relative">
              <div className="flex justify-between items-center mb-3">
                {step > 1 ? (
@@ -634,7 +636,7 @@ export default function Onboarding() {
              </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pb-6 px-1">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar mobile-scroll-lock pb-6 px-1">
             {step === 1 && (
               <div className="animate-fade-in space-y-6">
                 <h2 className="font-heading font-extrabold text-2xl md:text-3xl leading-tight text-center mb-6">Let’s calculate your retirement score in under 60 seconds.</h2>
@@ -732,7 +734,7 @@ export default function Onboarding() {
                     {formData.npsUsage === 'manual' && (
                       <div className="animate-fade-in space-y-4 pt-4 border-t-2 border-dashed border-[#1E293B]/20">
                         <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 text-center">Tier I is your main retirement account</p>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <InputField label="Monthly (₹)" type="number" name="npsContribution" value={formData.npsContribution} onChange={handleChange} placeholder="5,000" error={errors.npsContribution} />
                           <InputField label="Total Corpus (₹)" type="number" name="npsCorpus" value={formData.npsCorpus} onChange={handleChange} placeholder="1,20,000" error={errors.npsCorpus} />
                         </div>
@@ -974,7 +976,7 @@ export default function Onboarding() {
             )}
           </div>
 
-          <div className="pt-4 border-t-2 border-[#1E293B]/10 shrink-0 mt-auto">
+          <div className="pt-4 border-t-2 border-[#1E293B]/10 shrink-0 mt-auto bg-white sticky bottom-0 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
              <button 
                onClick={step === 8 ? handleSubmit : handleNext}
                 disabled={
@@ -988,7 +990,7 @@ export default function Onboarding() {
                     (formData.lifestyleMode === LIFESTYLE_MODES.CUSTOM && !(parseNumericInput(formData.customLifestyleMonthlySpend) > 0))
                   ))
                 }
-                className="candy-btn w-full py-4 text-base md:text-lg font-black uppercase tracking-widest pop-shadow flex justify-center items-center gap-3 cursor-pointer"
+                className="candy-btn touch-target w-full py-4 text-base md:text-lg font-black uppercase tracking-widest pop-shadow flex justify-center items-center gap-3 cursor-pointer"
              >
                 {step === 8 ? 'See My Score' : 'Continue'}
                 <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">

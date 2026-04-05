@@ -3,8 +3,8 @@ import { ShieldAlert, Construction } from 'lucide-react';
 import DashboardLayout from '../components/DashboardLayout';
 const PageContent = () => {
   return (
-    <div className="min-h-[70vh] p-4 md:p-8 max-w-5xl mx-auto flex items-center justify-center">
-      <section className="w-full rounded-[36px] border-2 border-[#1E293B] bg-white p-8 md:p-12 pop-shadow-lg relative overflow-hidden">
+    <div className="min-h-[70vh] p-3 sm:p-4 md:p-8 max-w-5xl mx-auto flex items-center justify-center">
+      <section className="w-full rounded-[28px] sm:rounded-[36px] border-2 border-[#1E293B] bg-white p-5 sm:p-8 md:p-12 pop-shadow-lg relative overflow-hidden">
         <div className="absolute right-0 top-0 h-56 w-56 translate-x-1/3 -translate-y-1/3 rounded-full bg-[#FBBF24]/20" />
         <div className="absolute left-0 bottom-0 h-72 w-72 -translate-x-1/2 translate-y-1/2 rounded-full bg-[#8B5CF6]/10" />
 

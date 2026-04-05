@@ -267,7 +267,7 @@ export default function LandingPage() {
         className={`bg-white border-b-2 border-[#1E293B] sticky top-0 z-50 transition-shadow duration-300 w-full`}
         style={scrolled ? { boxShadow: '0 4px 0 0 rgba(30,41,59,0.1)' } : {}}
       >
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
             <div className="w-10 h-10 bg-[#8B5CF6] border-2 border-[#1E293B] rounded-full flex items-center justify-center pop-shadow">
               <span className="font-heading font-extrabold text-white text-xl">R</span>
@@ -326,7 +326,8 @@ export default function LandingPage() {
           <div className="md:hidden flex items-center">
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 border-2 border-[#1E293B] rounded-lg bg-[#F1F5F9] pop-shadow active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+              className="touch-target p-2 border-2 border-[#1E293B] rounded-lg bg-[#F1F5F9] pop-shadow active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+              aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -335,8 +336,8 @@ export default function LandingPage() {
 
         {/* Mobile Menu Overlay */}
         {isMenuOpen && (
-          <div className="md:hidden bg-white border-b-2 border-[#1E293B] animate-slide-down">
-            <div className="flex flex-col p-6 gap-6 font-bold uppercase tracking-wide text-sm">
+          <div className="md:hidden bg-white border-b-2 border-[#1E293B] animate-slide-down max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain pb-safe">
+            <div className="flex flex-col px-5 py-5 gap-6 font-bold uppercase tracking-wide text-sm">
               <a href="#features" onClick={() => setIsMenuOpen(false)} className="py-2 border-b border-[#1E293B]/10 hover:text-[#8B5CF6]">Features</a>
               <a href="#how" onClick={() => setIsMenuOpen(false)} className="py-2 border-b border-[#1E293B]/10 hover:text-[#F472B6]">How It Works</a>
               <button 
@@ -399,18 +400,18 @@ export default function LandingPage() {
 
       <main>
         {/* Hero */}
-        <section className="relative pt-20 pb-32 px-6 overflow-hidden min-h-[85vh] flex items-center">
+        <section className="relative pt-12 sm:pt-20 pb-20 sm:pb-32 px-4 sm:px-6 overflow-hidden min-h-[85vh] flex items-center">
           <MemphisDotGrid />
           <Confetti />
           
-          <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 relative z-10 w-full">
+          <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-10 sm:gap-16 relative z-10 w-full">
             <div className="flex-1 w-full relative z-20">
               
-              <div className="inline-block px-4 py-1.5 border-2 border-[#1E293B] bg-[#F472B6] text-white font-bold uppercase tracking-widest text-xs rounded-full mb-8 pop-shadow transform -rotate-2">
+              <div className="inline-block px-4 py-1.5 border-2 border-[#1E293B] bg-[#F472B6] text-white font-bold uppercase tracking-widest text-[10px] sm:text-xs rounded-full mb-6 sm:mb-8 pop-shadow transform -rotate-2">
                 Your Retirement, Demystified.
               </div>
               
-              <h1 className="font-heading font-extrabold text-[#1E293B] mb-6 relative z-10" style={{ fontSize: 'clamp(2.5rem, 6vw, 4rem)', lineHeight: 1.1 }}>
+              <h1 className="font-heading font-extrabold text-[#1E293B] mb-6 relative z-10" style={{ fontSize: 'clamp(2.1rem, 9vw, 4rem)', lineHeight: 1.1 }}>
                 Know Exactly Where<br/>
                 <span className="relative inline-block">
                   <span className="relative z-10">Your Retirement</span>
@@ -418,44 +419,44 @@ export default function LandingPage() {
                 </span> Stands
               </h1>
               
-              <p className="font-medium mb-10 text-[#1E293B]/80" style={{ fontSize: '1.125rem', lineHeight: 1.7, maxWidth: '600px' }}>
+              <p className="font-medium mb-8 sm:mb-10 text-[#1E293B]/80" style={{ fontSize: 'clamp(1rem, 4.3vw, 1.125rem)', lineHeight: 1.7, maxWidth: '600px' }}>
                 RetireSahi calculates your personalized retirement readiness score, shows you exactly how much to contribute, and tells you how much tax you're leaving on the table — all in under 2 minutes.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-6 mb-8">
-                <button onClick={() => setIsAuthOpen(true)} className="candy-btn pop-shadow px-8 py-4 font-bold uppercase tracking-wide text-lg flex justify-center items-center gap-3 group cursor-pointer">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-8">
+                <button onClick={() => setIsAuthOpen(true)} className="candy-btn pop-shadow px-8 py-4 font-bold uppercase tracking-wide text-lg flex justify-center items-center gap-3 group cursor-pointer w-full sm:w-auto touch-target">
                   Get Started Free
                   <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center group-hover:translate-x-1 transition-transform">
                     <ArrowRight className="text-[#8B5CF6] w-5 h-5" strokeWidth={3} />
                   </div>
                 </button>
                 
-                <a href="#how" className="candy-btn-secondary px-8 py-4 font-bold uppercase tracking-wide text-lg flex justify-center items-center cursor-pointer">
+                <a href="#how" className="candy-btn-secondary px-8 py-4 font-bold uppercase tracking-wide text-lg flex justify-center items-center cursor-pointer w-full sm:w-auto touch-target">
                   See How It Works
                 </a>
               </div>
               
               {/* Trust Nudges */}
-              <div className="flex flex-wrap items-center gap-4 font-bold uppercase tracking-widest text-xs text-[#1E293B]/70">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 font-bold uppercase tracking-widest text-[10px] sm:text-xs text-[#1E293B]/70">
                 <span className="flex items-center gap-1.5 bg-[#1E293B]/5 px-3 py-1.5 rounded-full border border-[#1E293B]/10"><Lock className="w-3.5 h-3.5 text-[#8B5CF6]" /> Google Sign-in</span>
                 <span className="flex items-center gap-1.5 bg-[#1E293B]/5 px-3 py-1.5 rounded-full border border-[#1E293B]/10"><Zap className="w-3.5 h-3.5 text-[#F472B6]" /> 2 min setup</span>
                 <span className="flex items-center gap-1.5 bg-[#1E293B]/5 px-3 py-1.5 rounded-full border border-[#1E293B]/10"><IndianRupee className="w-3.5 h-3.5 text-[#34D399]" /> ₹0 to start</span>
               </div>
             </div>
             
-            <div className="flex-1 w-full relative h-full min-h-[400px] flex items-center justify-center">
+            <div className="flex-1 w-full relative h-full min-h-[320px] sm:min-h-[400px] flex items-center justify-center">
                <ScoreArc />
             </div>
           </div>
         </section>
 
         {/* Features */}
-        <section id="features" className="py-32 px-6 relative bg-[#FFFDF5] border-t-2 border-[#1E293B]">
+        <section id="features" className="py-20 sm:py-32 px-4 sm:px-6 relative bg-[#FFFDF5] border-t-2 border-[#1E293B]">
           <MemphisDotGrid />
           <Confetti />
           
           <div className="max-w-7xl mx-auto relative z-10">
-            <div className="text-center max-w-2xl mx-auto mb-24 relative">
+            <div className="text-center max-w-2xl mx-auto mb-16 sm:mb-24 relative">
               <h2 className="font-heading font-extrabold text-[#1E293B] relative inline-block z-10" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)' }}>
                 Powerful Features
                 <SmallSquigglyUnderline />
@@ -467,7 +468,7 @@ export default function LandingPage() {
               <div className="hidden lg:block absolute top-[150px] left-0 w-full border-t-2 border-dashed border-[#1E293B]/20 -z-10" aria-hidden="true" />
               <div className="hidden lg:block absolute bottom-[180px] left-0 w-full border-t-2 border-dashed border-[#1E293B]/20 -z-10" aria-hidden="true" />
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-20 gap-x-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-16 sm:gap-y-20 gap-x-8">
                 {[
                   { icon: Activity, title: "Retirement Readiness Score", desc: "Your retirement health in one number. Our arc-based score tells you exactly where you stand based on your real financial data." },
                   { icon: PieChart, title: "Live Portfolio Value", desc: "Upload your NPS statement PDF and we fetch live NAV from the NPS Trust to show your real portfolio value today." },
@@ -478,7 +479,7 @@ export default function LandingPage() {
                 ].map((feat, i) => {
                   const colors = [COLORS.violet, COLORS.pink, COLORS.amber, COLORS.emerald, COLORS.violet, COLORS.pink];
                   return (
-                    <div key={i} className="sticker-card p-8 pt-10 relative bg-white group mt-6">
+                    <div key={i} className="sticker-card p-6 sm:p-8 pt-10 relative bg-white group mt-6">
                       <div 
                         className="absolute -top-10 left-8 w-20 h-20 rounded-full border-2 border-[#1E293B] flex items-center justify-center shadow-[4px_4px_0_0_#1E293B] z-10"
                         style={{ backgroundColor: colors[i] }}
@@ -500,11 +501,11 @@ export default function LandingPage() {
         </section>
 
         {/* How It Works */}
-        <section id="how" className="py-32 px-6 relative bg-[#F1F5F9] border-y-2 border-[#1E293B] overflow-hidden">
+        <section id="how" className="py-20 sm:py-32 px-4 sm:px-6 relative bg-[#F1F5F9] border-y-2 border-[#1E293B] overflow-hidden">
           <MemphisDotGrid opacity={0.04} />
           
           <div className="max-w-7xl mx-auto relative z-10">
-            <h2 className="font-heading font-extrabold text-center mb-24 relative inline-block left-1/2 -translate-x-1/2" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)' }}>
+            <h2 className="font-heading font-extrabold text-center mb-16 sm:mb-24 relative inline-block left-1/2 -translate-x-1/2" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)' }}>
               How It Works
               <SmallSquigglyUnderline />
             </h2>

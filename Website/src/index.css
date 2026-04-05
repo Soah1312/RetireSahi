@@ -1,9 +1,13 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap');
+@import "tailwindcss";
 
 /* Minimal base styles */
 @theme {
   --animate-spin-slow: spin 20s linear infinite;
+}
+
+:root {
+  --tap-target-min: 44px;
 }
 
 body {
@@ -45,5 +49,26 @@ h1, h2, h3, h4, h5, h6, .font-heading {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@supports (padding: max(0px)) {
+  .pb-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .pt-safe {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+}
+
+@media (max-width: 1023px) {
+  .touch-target {
+    min-height: var(--tap-target-min);
+    min-width: var(--tap-target-min);
+  }
+
+  .mobile-scroll-lock {
+    overscroll-behavior: contain;
   }
 }

@@ -194,7 +194,7 @@ async function streamGroq({ messages, onChunk, onDone, onError, onMeta, forceFal
 const QuickPrompt = ({ text, onClick }) => (
   <button
     onClick={() => onClick(text)}
-    className="bg-white border-2 border-[#1E293B] rounded-full px-6 py-3 text-xs md:text-sm font-black uppercase tracking-widest pop-shadow hover:bg-[#8B5CF6] hover:text-white transition-all cursor-pointer text-left truncate max-w-full"
+    className="touch-target bg-white border-2 border-[#1E293B] rounded-2xl sm:rounded-full px-4 sm:px-6 py-3 text-xs md:text-sm font-black uppercase tracking-widest pop-shadow hover:bg-[#8B5CF6] hover:text-white transition-all cursor-pointer text-left max-w-full whitespace-normal"
   >
     {text}
   </button>
@@ -532,13 +532,13 @@ Never output hidden reasoning, chain-of-thought, or tags like <think>.
   }
 
   return (
-    <div className="h-[calc(100vh-64px)] flex flex-col relative overflow-hidden">
+    <div className="h-[calc(100dvh-64px)] lg:h-[calc(100vh-64px)] flex flex-col relative overflow-hidden">
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 pb-60"
+        className="flex-1 overflow-y-auto mobile-scroll-lock p-3 sm:p-4 md:p-8 space-y-6 sm:space-y-8 pb-[13.5rem] lg:pb-60"
       >
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center max-w-2xl mx-auto space-y-8 animate-fade-in text-center px-4">
+          <div className="h-full flex flex-col items-center justify-center max-w-2xl mx-auto space-y-6 sm:space-y-8 animate-fade-in text-center px-1 sm:px-4">
             <div className="w-24 h-24 rounded-full border-4 border-[#1E293B] bg-white flex items-center justify-center pop-shadow animate-bounce">
               <Sparkles className="w-12 h-12 text-[#F472B6]" strokeWidth={2.5} />
             </div>
@@ -548,7 +548,7 @@ Never output hidden reasoning, chain-of-thought, or tags like <think>.
                 Hey {userData.firstName}! I'm optimized for lightning speed. Ask me anything.
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 w-full">
               {quickPrompts.map((txt, i) => (
                 <QuickPrompt key={i} text={txt} onClick={handleSend} />
               ))}
@@ -607,14 +607,14 @@ Never output hidden reasoning, chain-of-thought, or tags like <think>.
                 </div>
               </div>
             )}
-            <div className="h-20" />
+            <div className="h-28 lg:h-20" />
           </div>
         )}
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 bg-gradient-to-t from-[#FFFDF5] via-[#FFFDF5] to-transparent pointer-events-none">
+      <div className="absolute left-0 right-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] lg:bottom-0 p-3 sm:p-4 md:p-8 bg-gradient-to-t from-[#FFFDF5] via-[#FFFDF5] to-transparent pointer-events-none">
         <div className="max-w-4xl mx-auto w-full pointer-events-auto">
-          <div className="bg-white border-2 border-[#1E293B] rounded-full p-2 pl-6 md:p-3 md:pl-8 flex items-center gap-4 pop-shadow relative">
+          <div className="bg-white border-2 border-[#1E293B] rounded-2xl sm:rounded-full p-2 sm:p-2.5 pl-4 sm:pl-6 md:p-3 md:pl-8 flex items-center gap-3 sm:gap-4 pop-shadow relative">
             <input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -625,7 +625,7 @@ Never output hidden reasoning, chain-of-thought, or tags like <think>.
             <button
               onClick={() => handleSend()}
               disabled={isLoading || isStreaming || !inputValue.trim()}
-              className="w-10 h-10 md:w-14 md:h-14 rounded-full bg-[#34D399] border-2 border-[#1E293B] flex items-center justify-center text-white pop-shadow transition-all hover:-translate-y-1 hover:translate-x-[-1px] disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
+              className="touch-target w-11 h-11 md:w-14 md:h-14 rounded-full bg-[#34D399] border-2 border-[#1E293B] flex items-center justify-center text-white pop-shadow transition-all hover:-translate-y-1 hover:translate-x-[-1px] disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
             >
               {isLoading ? (
                 <Cpu className="w-5 h-5 md:w-6 md:h-6 animate-spin text-[#1E293B]" strokeWidth={3} />
@@ -634,7 +634,7 @@ Never output hidden reasoning, chain-of-thought, or tags like <think>.
               )}
             </button>
           </div>
-          <div className="mt-2 px-2 text-[10px] font-black uppercase tracking-widest text-[#1E293B]/40">
+          <div className="mt-2 px-2 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[#1E293B]/40">
             Testing tip: use /fallback before your prompt to force Llama fallback on localhost/dev.
           </div>
         </div>

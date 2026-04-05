@@ -398,12 +398,13 @@ export default function Dashboard() {
       </aside>
 
       {/* --- Mobile Nav Bottom (Mobile Only) --- */}
-      <nav className="fixed bottom-0 left-0 w-full bg-white h-16 border-t border-slate-200 flex lg:hidden items-center justify-around z-50 px-2 pb-safe">
+         <nav className="fixed bottom-0 left-0 w-full bg-white h-[calc(4rem+env(safe-area-inset-bottom))] border-t border-slate-200 flex lg:hidden items-center justify-around z-50 px-2 pt-1 pb-[env(safe-area-inset-bottom)]">
          {navItems.map(item => (
            <button 
             key={item.label}
             onClick={() => navigate(item.path)}
-            className={`flex flex-col items-center gap-1 ${item.active ? 'text-[#8B5CF6]' : 'text-slate-400'}`}
+                  className={`touch-target min-w-[52px] flex flex-col items-center justify-center gap-1 ${item.active ? 'text-[#8B5CF6]' : 'text-slate-400'}`}
+                  aria-label={item.label}
            >
              <item.icon className="w-5 h-5" strokeWidth={2.5} />
              {item.active && <span className="text-[9px] font-black uppercase tracking-widest leading-none">{item.label}</span>}
@@ -412,7 +413,7 @@ export default function Dashboard() {
       </nav>
 
       {/* --- Main Content area --- */}
-      <main className={`min-h-screen flex flex-col relative pb-20 lg:pb-0 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-60'}`}>
+      <main className={`min-h-screen flex flex-col relative pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-60'}`}>
          <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(#1E293B 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
 
          {/* Top Bar */}
@@ -420,7 +421,8 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
                <button 
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="lg:hidden p-2 -ml-2 text-[#1E293B] hover:bg-slate-50 rounded-lg transition-colors"
+                  className="lg:hidden touch-target p-2 -ml-2 text-[#1E293B] hover:bg-slate-50 rounded-lg transition-colors"
+                  aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
                >
                   {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                </button>
@@ -600,7 +602,7 @@ export default function Dashboard() {
                   </div>
 
                   {/* Progress Bar Sector */}
-                  <div className="flex-1 min-w-[300px] flex flex-col justify-center">
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
                     <div className="text-[10px] md:text-xs font-bold text-[#1E293B] uppercase tracking-widest flex justify-between">
                       <span>Gap: {formatIndian(baseResults?.gap)}</span>
                       <span>{Math.round(((baseResults?.gap || 0) / (baseResults?.requiredCorpus || 1)) * 100)}% remaining</span>
@@ -680,7 +682,7 @@ export default function Dashboard() {
             </section>
 
             {/* 3. Quick Stats Row */}
-            <section id="tour-quick-stats" className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <section id="tour-quick-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                       <QuickStat label={<>Monthly Pulse <InfoTooltip text={DASHBOARD_TIPS.monthlyPulse} /></>} value={formatIndian(baseResults?.totalMonthlyContribution || 0)} subtext="Total monthly contribution" icon={Wallet} color={COLORS.pink} />
                       <QuickStat label={<>NPS Corpus <InfoTooltip text={DASHBOARD_TIPS.totalWealth} /></>} value={formatIndian(baseResults?.npsCorpusUsed || 0)} subtext="Current NPS value" icon={Shield} color={COLORS.violet} />
                       <QuickStat label={<>Other Savings <InfoTooltip text={DASHBOARD_TIPS.totalWealth} /></>} value={formatIndian(baseResults?.otherSavingsUsed || 0)} subtext="PPF/EPF/MF/others" icon={PiggyBank} color={COLORS.emerald} />
@@ -793,7 +795,7 @@ export default function Dashboard() {
                            <button 
                              key={txt} 
                              onClick={() => navigate('/ai-copilot', { state: { initialPrompt: txt } })}
-                             className="w-full text-left p-3 rounded-xl border-2 border-[#1E293B] bg-[#FFFDF5] text-[10px] md:text-xs font-black uppercase tracking-widest shadow-[2px_2px_0_0_#1E293B] hover:shadow-[4px_4px_0_0_#F472B6] transition-all cursor-pointer truncate"
+                             className="touch-target w-full text-left p-3 rounded-xl border-2 border-[#1E293B] bg-[#FFFDF5] text-[10px] md:text-xs font-black uppercase tracking-widest shadow-[2px_2px_0_0_#1E293B] hover:shadow-[4px_4px_0_0_#F472B6] transition-all cursor-pointer whitespace-normal"
                            >
                               {txt}
                            </button>
@@ -816,7 +818,7 @@ export default function Dashboard() {
       {simulatorOpen && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-end animate-fade-in">
            <div className="absolute inset-0 bg-[#1E293B]/40 backdrop-blur-sm" onClick={() => setSimulatorOpen(false)} />
-           <div className="z-10 bg-white border-t-4 border-l-4 border-r-4 border-[#1E293B] rounded-t-[40px] w-full max-w-4xl p-8 pb-12 shadow-[0_-12px_40px_rgba(0,0,0,0.15)] flex flex-col relative animate-slide-up no-scrollbar overflow-y-auto max-h-[90vh]">
+           <div className="z-10 bg-white border-t-4 border-l-4 border-r-4 border-[#1E293B] rounded-t-[32px] sm:rounded-t-[40px] w-full max-w-4xl p-4 sm:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-12 shadow-[0_-12px_40px_rgba(0,0,0,0.15)] flex flex-col relative animate-slide-up no-scrollbar overflow-y-auto max-h-[90vh]">
               <div className="w-16 h-2 bg-[#1E293B]/10 rounded-full mx-auto mb-8 shrink-0" />
 
               <div className="flex justify-between items-start mb-10 shrink-0">
@@ -824,7 +826,7 @@ export default function Dashboard() {
                     <h2 className="font-heading font-black text-4xl text-[#1E293B] leading-none mb-2 tabular-nums">Decision Simulator</h2>
                     <p className="text-sm font-bold text-[#1E293B]/40 uppercase tracking-widest">Calculated using {(simResults?.blendedReturn * 100).toFixed(1)}% expected return.</p>
                  </div>
-                 <button onClick={() => setSimulatorOpen(false)} className="p-3 bg-[#F1F5F9] border-2 border-[#1E293B] rounded-full hover:bg-[#FEE2E2] hover:text-[#EF4444] transition-colors cursor-pointer pop-shadow">
+                 <button onClick={() => setSimulatorOpen(false)} className="touch-target p-3 bg-[#F1F5F9] border-2 border-[#1E293B] rounded-full hover:bg-[#FEE2E2] hover:text-[#EF4444] transition-colors cursor-pointer pop-shadow" aria-label="Close simulator">
                     <X className="w-6 h-6" />
                  </button>
               </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Mail, Lock, X, ArrowRight, Loader2 } from 'lucide-react';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -26,6 +26,25 @@ export default function AuthModal({ isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -86,7 +105,7 @@ export default function AuthModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-[#1E293B]/60 backdrop-blur-sm cursor-pointer" 
@@ -95,7 +114,10 @@ export default function AuthModal({ isOpen, onClose }) {
       
       {/* Modal Content */}
       <div 
-        className="relative bg-[#FFFDF5] border-2 border-[#1E293B] rounded-2xl w-full max-w-md overflow-hidden pop-shadow flex flex-col"
+        className="relative bg-[#FFFDF5] border-2 border-[#1E293B] rounded-t-2xl sm:rounded-2xl w-full max-w-md overflow-hidden pop-shadow flex flex-col max-h-[calc(100dvh-0.5rem)] sm:max-h-[90vh]"
+        role="dialog"
+        aria-modal="true"
+        aria-label={isLogin ? 'Login modal' : 'Sign up modal'}
         style={{ animation: 'slide-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
       >
         <style>{`
@@ -116,6 +138,10 @@ export default function AuthModal({ isOpen, onClose }) {
           .input-memphis:focus {
             box-shadow: 4px 4px 0px 0px ${COLORS.violet};
             transform: translate(-2px, -2px);
+          }
+          .input-memphis:focus-visible {
+            outline: 2px solid ${COLORS.violet};
+            outline-offset: 1px;
           }
           .social-btn {
             border: 2px solid #1E293B;
@@ -140,24 +166,36 @@ export default function AuthModal({ isOpen, onClose }) {
             transform: translate(2px, 2px);
             box-shadow: 2px 2px 0px 0px #1E293B;
           }
+          .social-btn:focus-visible {
+            outline: 2px solid ${COLORS.violet};
+            outline-offset: 2px;
+          }
+
+          @media (max-width: 640px) {
+            .auth-title {
+              font-size: 1.7rem;
+              line-height: 1.2;
+            }
+          }
         `}</style>
         
         {/* Header */}
-        <div className="bg-[#8B5CF6] border-b-2 border-[#1E293B] p-6 relative flex justify-between items-center text-white">
+        <div className="bg-[#8B5CF6] border-b-2 border-[#1E293B] px-4 py-4 sm:p-6 relative flex justify-between items-center text-white">
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#FFFDF5_2px,transparent_2px)] [background-size:16px_16px]" />
-          <h2 className="font-heading font-extrabold text-3xl relative z-10 m-0">
+          <h2 className="auth-title font-heading font-extrabold text-3xl relative z-10 m-0 pr-3">
             {isLogin ? 'Welcome Back!' : 'Start Your Journey'}
           </h2>
           <button 
             onClick={onClose}
-            className="w-8 h-8 rounded-full border-2 border-[#1E293B] bg-white flex items-center justify-center text-[#1E293B] shadow-[2px_2px_0_0_#1E293B] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_#1E293B] active:translate-y-0.5 active:shadow-[1px_1px_0_0_#1E293B] transition-all relative z-10 p-0 cursor-pointer"
+            className="touch-target w-11 h-11 sm:w-8 sm:h-8 rounded-full border-2 border-[#1E293B] bg-white flex items-center justify-center text-[#1E293B] shadow-[2px_2px_0_0_#1E293B] hover:-translate-y-0.5 hover:shadow-[3px_3px_0_0_#1E293B] active:translate-y-0.5 active:shadow-[1px_1px_0_0_#1E293B] transition-all relative z-10 p-0 cursor-pointer"
+            aria-label="Close authentication modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-8 pb-10 flex flex-col items-center">
+        <div className="overflow-y-auto overscroll-contain mobile-scroll-lock p-5 sm:p-8 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-10 flex flex-col items-center">
           
           <button onClick={handleGoogleSignIn} disabled={loading} className="social-btn mb-6 cursor-pointer disabled:opacity-50">
             {!loading ? (
@@ -201,6 +239,7 @@ export default function AuthModal({ isOpen, onClose }) {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
+                autoComplete="email"
                 className="input-memphis"
               />
             </div>
@@ -214,6 +253,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
+                  autoComplete="current-password"
                   className="input-memphis"
                 />
               </div>

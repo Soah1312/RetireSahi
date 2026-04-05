@@ -25,7 +25,7 @@ import {
 } from '../constants/investmentSchemes.js';
 
 const SectionHeader = ({ icon: Icon, title, editing, onEdit, color }) => (
-  <div className="flex items-center justify-between py-6 px-8 border-b border-[#1E293B]/5 transition-all">
+  <div className="flex items-center justify-between py-5 sm:py-6 px-4 sm:px-8 border-b border-[#1E293B]/5 transition-all gap-3">
     <div className="flex items-center gap-4">
       <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 border-[#1E293B] shadow-[2px_2px_0_0_#1E293B]`} style={{ backgroundColor: `${color}22` }}>
         {React.createElement(Icon, { className: 'w-5 h-5 text-[#1E293B]', strokeWidth: 2.5, style: { color } })}
@@ -34,7 +34,7 @@ const SectionHeader = ({ icon: Icon, title, editing, onEdit, color }) => (
     </div>
     <button 
       onClick={onEdit}
-      className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-[2px] border-2 border-[#1E293B] transition-all pop-shadow hover:-translate-y-0.5 ${editing ? 'bg-slate-100 text-[#1E293B]' : 'bg-white text-[#8B5CF6]'}`}
+      className={`touch-target px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-[2px] border-2 border-[#1E293B] transition-all pop-shadow hover:-translate-y-0.5 ${editing ? 'bg-slate-100 text-[#1E293B]' : 'bg-white text-[#8B5CF6]'}`}
     >
       {editing ? 'Cancel' : 'Edit'}
     </button>
@@ -278,7 +278,7 @@ const PageContent = () => {
   const showOtherInputs = includesOtherForMode(currentMode);
 
   return (
-    <div className="p-4 md:p-8 space-y-8 max-w-4xl mx-auto pb-24">
+    <div className="p-3 sm:p-4 md:p-8 space-y-8 max-w-4xl mx-auto pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-24">
       {/* Section 1: Personal Info */}
       <div className={`relative bg-white border-2 border-[#1E293B] rounded-[24px] overflow-hidden pop-shadow transition-all ${editingSection === 'personal' && 'ring-4 ring-[#8B5CF6]/10'}`}>
         <div className="w-1.5 absolute left-0 top-0 h-full bg-[#8B5CF6]" />
@@ -287,7 +287,7 @@ const PageContent = () => {
           editing={editingSection === 'personal'} 
           onEdit={() => toggleEditSection('personal')} 
         />
-        <div className="p-8">
+        <div className="p-5 sm:p-8">
           {editingSection === 'personal' ? (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -316,7 +316,7 @@ const PageContent = () => {
                       <button 
                         key={s}
                         onClick={() => setFormData({...formData, workContext: s})}
-                        className={`py-3 rounded-full border-2 border-[#1E293B] font-black text-[10px] uppercase tracking-widest transition-all ${formData.workContext === s ? 'bg-[#8B5CF6] text-white shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-slate-400 hover:bg-slate-50'}`}
+                        className={`touch-target py-3 rounded-full border-2 border-[#1E293B] font-black text-[10px] uppercase tracking-widest transition-all ${formData.workContext === s ? 'bg-[#8B5CF6] text-white shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-slate-400 hover:bg-slate-50'}`}
                       >
                         {s}
                       </button>
@@ -331,7 +331,7 @@ const PageContent = () => {
               />
               <button 
                 onClick={() => handleSave('personal')}
-                className="w-full py-4 bg-[#8B5CF6] text-white border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-xs pop-shadow hover:-translate-y-1 transition-all"
+                className="touch-target w-full py-4 bg-[#8B5CF6] text-white border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-xs pop-shadow hover:-translate-y-1 transition-all"
               >
                 Save Personal Info
               </button>
@@ -363,7 +363,7 @@ const PageContent = () => {
           editing={editingSection === 'income'} 
           onEdit={() => toggleEditSection('income')} 
         />
-        <div className="p-8">
+        <div className="p-5 sm:p-8">
           {editingSection === 'income' ? (
             <div className="space-y-6">
               <div className="space-y-3">
@@ -371,19 +371,19 @@ const PageContent = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <button
                     onClick={() => setFormData({ ...formData, retirementMode: RETIREMENT_MODES.NPS_ONLY, npsUsage: formData.npsUsage === 'none' ? 'manual' : (formData.npsUsage || 'manual') })}
-                    className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-[10px] transition-all ${currentMode === RETIREMENT_MODES.NPS_ONLY ? 'bg-[#8B5CF6] text-white shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
+                    className={`touch-target py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-[10px] transition-all ${currentMode === RETIREMENT_MODES.NPS_ONLY ? 'bg-[#8B5CF6] text-white shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
                   >
                     NPS only
                   </button>
                   <button
                     onClick={() => setFormData({ ...formData, retirementMode: RETIREMENT_MODES.NON_NPS_ONLY, npsUsage: 'none' })}
-                    className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-[10px] transition-all ${currentMode === RETIREMENT_MODES.NON_NPS_ONLY ? 'bg-[#34D399] text-[#1E293B] shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
+                    className={`touch-target py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-[10px] transition-all ${currentMode === RETIREMENT_MODES.NON_NPS_ONLY ? 'bg-[#34D399] text-[#1E293B] shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
                   >
                     Non-NPS only
                   </button>
                   <button
                     onClick={() => setFormData({ ...formData, retirementMode: RETIREMENT_MODES.HYBRID, npsUsage: formData.npsUsage === 'none' ? 'manual' : (formData.npsUsage || 'manual') })}
-                    className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-[10px] transition-all ${currentMode === RETIREMENT_MODES.HYBRID ? 'bg-[#FBBF24] text-[#1E293B] shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
+                    className={`touch-target py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-[10px] transition-all ${currentMode === RETIREMENT_MODES.HYBRID ? 'bg-[#FBBF24] text-[#1E293B] shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
                   >
                     NPS + Other
                   </button>
@@ -460,7 +460,7 @@ const PageContent = () => {
                           key={eq}
                           disabled={eq > getMaxEquityPct(formData.age)}
                           onClick={() => setFormData({...formData, npsEquity: eq})}
-                          className={`py-3 rounded-full border-2 border-[#1E293B] font-black text-[10px] uppercase tracking-widest transition-all ${formData.npsEquity === eq ? 'bg-[#F472B6] text-white shadow-[3px_3px_0_0_#1E293B]' : eq > getMaxEquityPct(formData.age) ? 'opacity-20 cursor-not-allowed' : 'bg-white text-slate-400 hover:bg-slate-50'}`}
+                          className={`touch-target py-3 rounded-full border-2 border-[#1E293B] font-black text-[10px] uppercase tracking-widest transition-all ${formData.npsEquity === eq ? 'bg-[#F472B6] text-white shadow-[3px_3px_0_0_#1E293B]' : eq > getMaxEquityPct(formData.age) ? 'opacity-20 cursor-not-allowed' : 'bg-white text-slate-400 hover:bg-slate-50'}`}
                         >
                           {eq}%
                         </button>
@@ -478,7 +478,7 @@ const PageContent = () => {
                         <button
                           type="button"
                           onClick={() => setFormData({ ...formData, [scheme.toggleField]: !formData[scheme.toggleField] })}
-                          className={`w-full py-2 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-[10px] transition-all ${formData[scheme.toggleField] ? 'bg-[#34D399] text-[#1E293B] shadow-[2px_2px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
+                          className={`touch-target w-full py-2 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-[10px] transition-all ${formData[scheme.toggleField] ? 'bg-[#34D399] text-[#1E293B] shadow-[2px_2px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
                         >
                           {scheme.label}
                         </button>
@@ -512,7 +512,7 @@ const PageContent = () => {
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, customSchemeAssumptionsEnabled: !formData.customSchemeAssumptionsEnabled })}
-                        className={`px-4 py-2 rounded-full border-2 border-[#1E293B] font-black uppercase tracking-widest text-[10px] transition-all ${formData.customSchemeAssumptionsEnabled ? 'bg-[#34D399] text-[#1E293B] shadow-[2px_2px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
+                        className={`touch-target px-4 py-2 rounded-full border-2 border-[#1E293B] font-black uppercase tracking-widest text-[10px] transition-all ${formData.customSchemeAssumptionsEnabled ? 'bg-[#34D399] text-[#1E293B] shadow-[2px_2px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
                       >
                         {formData.customSchemeAssumptionsEnabled ? 'Custom ON' : 'Use Defaults'}
                       </button>
@@ -571,7 +571,7 @@ const PageContent = () => {
               />
               <button 
                 onClick={() => handleSave('income')}
-                className="w-full py-4 bg-[#F472B6] text-white border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-xs pop-shadow hover:-translate-y-1 transition-all"
+                className="touch-target w-full py-4 bg-[#F472B6] text-white border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-xs pop-shadow hover:-translate-y-1 transition-all"
               >
                 Update Retirement Inputs
               </button>
@@ -611,7 +611,7 @@ const PageContent = () => {
           editing={editingSection === 'retirement'} 
           onEdit={() => toggleEditSection('retirement')} 
         />
-        <div className="p-8">
+        <div className="p-5 sm:p-8">
           {editingSection === 'retirement' ? (
             <div className="space-y-8">
               <div className="space-y-4">
@@ -634,7 +634,7 @@ const PageContent = () => {
                         <button 
                           key={l}
                           onClick={() => setFormData({...formData, lifestyle: l})}
-                          className={`p-4 rounded-xl border-2 border-[#1E293B] text-left transition-all ${formData.lifestyle === l ? 'bg-[#FFFDF5] border-[#FBBF24] shadow-[4px_4px_0_0_#FBBF24] -translate-y-1' : 'bg-white opacity-50'}`}
+                          className={`touch-target p-4 rounded-xl border-2 border-[#1E293B] text-left transition-all ${formData.lifestyle === l ? 'bg-[#FFFDF5] border-[#FBBF24] shadow-[4px_4px_0_0_#FBBF24] -translate-y-1' : 'bg-white opacity-50'}`}
                         >
                           <div className="font-black uppercase tracking-widest text-xs mb-1">{l}</div>
                           <div className="text-[9px] font-bold text-slate-400 tracking-wide">
@@ -648,7 +648,7 @@ const PageContent = () => {
               <ScoreImpact oldScore={userData.score} newScore={simulatedResults.score} />
               <button 
                 onClick={() => handleSave('retirement')}
-                className="w-full py-4 bg-[#FBBF24] text-[#1E293B] border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-xs pop-shadow hover:-translate-y-1 transition-all"
+                className="touch-target w-full py-4 bg-[#FBBF24] text-[#1E293B] border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-xs pop-shadow hover:-translate-y-1 transition-all"
               >
                 Adjust Retirement Goal
               </button>
@@ -680,20 +680,20 @@ const PageContent = () => {
           editing={editingSection === 'tax'} 
           onEdit={() => toggleEditSection('tax')} 
         />
-        <div className="p-8">
+        <div className="p-5 sm:p-8">
           {editingSection === 'tax' ? (
             <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <button 
                     onClick={() => setFormData({...formData, taxRegime: 'new'})}
-                    className={`p-4 rounded-xl border-2 border-[#1E293B] text-left ${formData.taxRegime === 'new' ? 'bg-[#D1FAE5] border-[#34D399] shadow-[3px_3px_0_0_#34D399]' : 'bg-white opacity-40'}`}
+                    className={`touch-target p-4 rounded-xl border-2 border-[#1E293B] text-left ${formData.taxRegime === 'new' ? 'bg-[#D1FAE5] border-[#34D399] shadow-[3px_3px_0_0_#34D399]' : 'bg-white opacity-40'}`}
                   >
                       <div className="font-black text-xs uppercase tracking-widest flex items-center gap-1">New Regime <InfoTooltip text={SETTINGS_TIPS.taxRegime} size={12} /></div>
                       <div className="text-[9px] font-bold text-slate-500 mt-1">Budget 2025 Standard</div>
                   </button>
                   <button 
                     onClick={() => setFormData({...formData, taxRegime: 'old'})}
-                    className={`p-4 rounded-xl border-2 border-[#1E293B] text-left ${formData.taxRegime === 'old' ? 'bg-[#D1FAE5] border-[#34D399] shadow-[3px_3px_0_0_#34D399]' : 'bg-white opacity-40'}`}
+                    className={`touch-target p-4 rounded-xl border-2 border-[#1E293B] text-left ${formData.taxRegime === 'old' ? 'bg-[#D1FAE5] border-[#34D399] shadow-[3px_3px_0_0_#34D399]' : 'bg-white opacity-40'}`}
                   >
                       <div className="font-black text-xs uppercase tracking-widest">Old Regime</div>
                       <div className="text-[9px] font-bold text-slate-500 mt-1">Deduction Based</div>
@@ -713,7 +713,7 @@ const PageContent = () => {
                 </div>
                 <button 
                 onClick={() => handleSave('tax')}
-                className="w-full py-4 bg-emerald-500 text-white border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-xs pop-shadow hover:-translate-y-1 transition-all"
+                className="touch-target w-full py-4 bg-emerald-500 text-white border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-xs pop-shadow hover:-translate-y-1 transition-all"
               >
                 Save Tax Preferences
               </button>
@@ -737,7 +737,7 @@ const PageContent = () => {
 
       {/* Section 5: Account Actions */}
       <div className="bg-white border-2 border-[#1E293B] rounded-[24px] overflow-hidden pop-shadow">
-        <div className="p-8 space-y-4">
+        <div className="p-5 sm:p-8 space-y-4">
           <h3 className="font-heading font-black text-lg text-[#1E293B] uppercase tracking-widest flex items-center gap-2">
             <Bot className="w-5 h-5" /> AI Preferences
           </h3>
@@ -758,7 +758,7 @@ const PageContent = () => {
                 setUserData((prev) => ({ ...prev, aiPrivacyMode: newMode }));
                 showToast(`AI mode switched to ${newMode === 'full' ? 'Full' : 'Privacy'} mode.`, 'amber');
               }}
-              className="text-white border-2 border-[#1E293B] rounded-full px-4 py-2 font-['Plus_Jakarta_Sans'] font-bold text-[0.75rem] uppercase tracking-[0.06em] shadow-[3px_3px_0_#1E293B]"
+              className="touch-target text-white border-2 border-[#1E293B] rounded-full px-4 py-2 font-['Plus_Jakarta_Sans'] font-bold text-[0.75rem] uppercase tracking-[0.06em] shadow-[3px_3px_0_#1E293B]"
               style={{ background: userData.aiPrivacyMode === 'full' ? '#F472B6' : '#8B5CF6' }}
             >
               Switch to {userData.aiPrivacyMode === 'full' ? 'Privacy' : 'Full'} Mode
@@ -769,7 +769,7 @@ const PageContent = () => {
 
       {/* Section 6: Account Actions */}
       <div className="bg-slate-50 border-2 border-[#1E293B]/10 rounded-[24px] overflow-hidden">
-          <div className="p-8 space-y-4">
+          <div className="p-5 sm:p-8 space-y-4">
             <h3 className="font-heading font-black text-lg text-[#1E293B] uppercase tracking-widest flex items-center gap-2">
                 <SettingsIcon className="w-5 h-5" /> Account Actions
             </h3>
@@ -777,14 +777,14 @@ const PageContent = () => {
             <div className="flex flex-wrap gap-4">
                 <button 
                 onClick={exportData}
-                className="px-6 py-3 bg-white border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-[10px] pop-shadow flex items-center gap-2 hover:-translate-y-0.5 transition-all"
+                className="touch-target px-6 py-3 bg-white border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-[10px] pop-shadow flex items-center gap-2 hover:-translate-y-0.5 transition-all"
                 >
                   <Download className="w-4 h-4" /> Export My Data (.json)
                 </button>
                 
                 <button 
                 onClick={() => setShowDeleteModal(true)}
-                className="px-6 py-3 bg-white border-2 border-[#EF4444] text-[#EF4444] rounded-full font-black uppercase tracking-widest text-[10px] shadow-[4px_4px_0_0_#EF4444] flex items-center gap-2 hover:-translate-y-0.5 transition-all"
+                className="touch-target px-6 py-3 bg-white border-2 border-[#EF4444] text-[#EF4444] rounded-full font-black uppercase tracking-widest text-[10px] shadow-[4px_4px_0_0_#EF4444] flex items-center gap-2 hover:-translate-y-0.5 transition-all"
                 >
                   <Trash2 className="w-4 h-4" /> Permanently Delete My Account
                 </button>
@@ -807,7 +807,7 @@ const PageContent = () => {
 
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+        <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-12 left-1/2 -translate-x-1/2 z-50 animate-slide-up px-3 w-full max-w-xl">
           <div className={`border-2 border-[#1E293B] px-8 py-4 rounded-full font-black text-xs uppercase tracking-[3px] shadow-[6px_6px_0_0_#1E293B] flex items-center gap-4 transition-colors`} style={{ backgroundColor: toast.type === 'red' ? '#EF4444' : toast.type === 'amber' ? '#FBBF24' : toast.type === 'emerald' ? '#34D399' : userData.score > simulatedResults.score ? '#F472B6' : '#FFFDF5' }}>
               {toast.type === 'red' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
               {toast.message}
@@ -817,9 +817,9 @@ const PageContent = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#1E293B]/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white border-2 border-[#1E293B] rounded-[32px] p-10 max-w-lg w-full pop-shadow-vivid relative animate-scale-up">
-              <button onClick={() => setShowDeleteModal(false)} className="absolute top-6 right-6 p-2 text-slate-300 hover:text-slate-900"><X /></button>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-3 sm:p-4 bg-[#1E293B]/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white border-2 border-[#1E293B] rounded-[24px] sm:rounded-[32px] p-5 sm:p-10 max-w-lg w-full pop-shadow-vivid relative animate-scale-up max-h-[90dvh] overflow-y-auto pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+              <button onClick={() => setShowDeleteModal(false)} className="touch-target absolute top-4 sm:top-6 right-4 sm:right-6 p-2 text-slate-300 hover:text-slate-900"><X /></button>
               <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-red-500 shadow-[4px_4px_0_0_#EF4444]">
                   <Trash2 className="w-10 h-10 text-red-500" strokeWidth={2.5} />
               </div>
@@ -830,13 +830,13 @@ const PageContent = () => {
               <div className="grid grid-cols-2 gap-4">
                   <button 
                   onClick={() => setShowDeleteModal(false)}
-                  className="py-4 rounded-full border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs hover:bg-slate-50 transition-all"
+                  className="touch-target py-4 rounded-full border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs hover:bg-slate-50 transition-all"
                   >
                     No, Keep It
                   </button>
                   <button 
                   onClick={deleteAccount}
-                  className="py-4 bg-[#EF4444] text-white border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-xs shadow-[4px_4px_0_0_#1E293B] hover:-translate-y-1 transition-all"
+                  className="touch-target py-4 bg-[#EF4444] text-white border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-xs shadow-[4px_4px_0_0_#1E293B] hover:-translate-y-1 transition-all"
                   >
                     Yes, Delete Everything
                   </button>
