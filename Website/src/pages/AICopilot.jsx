@@ -20,8 +20,8 @@ import { GROQ_PRIVACY_MODE_FIELDS, GROQ_FULL_MODE_FIELDS } from '../utils/encryp
 const AI_ENDPOINT = '/api/groq';
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const PRIMARY_MODEL = import.meta.env.VITE_GROQ_PRIMARY_MODEL || 'qwen/qwen3-32b';
-const FALLBACK_MODEL = import.meta.env.VITE_GROQ_FALLBACK_MODEL || 'openai/gpt-oss-120b';
+const PRIMARY_MODEL = import.meta.env.VITE_GROQ_PRIMARY_MODEL || 'qwen-2.5-32b';
+const FALLBACK_MODEL = import.meta.env.VITE_GROQ_FALLBACK_MODEL || 'llama-3.3-70b-versatile';
 const USE_DIRECT_GROQ_DEV = import.meta.env.DEV && !!GROQ_API_KEY;
 const ASSISTANT_PLACEHOLDER_STAGES = [
   'Thinking...',
@@ -181,6 +181,10 @@ async function streamGroq({ messages, onChunk, onDone, onError, onMeta, forceFal
       }
       try {
         const parsed = JSON.parse(data);
+        if (parsed.error) {
+          onError(parsed.error.message || 'Stream error');
+          return;
+        }
         if (parsed?.type === 'meta') {
           onMeta?.(parsed);
           continue;
