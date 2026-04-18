@@ -31,6 +31,7 @@ export const ENCRYPTED_FIELDS = [
   'monthlyGap',
   'monthlySpendToday',
   'monthlySpendAtRetirement',
+  'customRetirementMonthlyAmount',
   'lumpSumCorpus',
   'annuityCorpus',
   'monthlyAnnuityIncome',
@@ -49,6 +50,7 @@ export const NON_SENSITIVE_FIELDS = [
   'workContext',
   'retirementMode',
   'lifestyle',
+  'retirementGoalType',
   'taxRegime',
   'npsEquity',
   'addSavings',
@@ -73,6 +75,7 @@ export const GROQ_PRIVACY_MODE_FIELDS = [
   'retireAge',
   'workContext',
   'lifestyle',
+  'retirementGoalType',
   'taxRegime',
   'npsEquity',
 ];
@@ -80,6 +83,7 @@ export const GROQ_PRIVACY_MODE_FIELDS = [
 // Everything sent to Groq in Full Mode (after user consent)
 export const GROQ_FULL_MODE_FIELDS = [
   ...GROQ_PRIVACY_MODE_FIELDS,
+  'customRetirementMonthlyAmount',
   'retirementMode',
   'monthlyIncome',
   'npsContribution',

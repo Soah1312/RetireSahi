@@ -25,6 +25,16 @@ import {
   getSchemeAssumedReturnPct,
   normalizeAssumedReturnPct,
 } from '../constants/investmentSchemes.js';
+import {
+  createDefaultLifestyleConfig,
+  normalizeLifestyleConfig,
+  normalizeLifestylePreset,
+  LIFESTYLE_MODES,
+  LIFESTYLE_MULTIPLIERS,
+} from '../constants/lifestyleConfig.js';
+
+const MIN_CUSTOM_RETIREMENT_GOAL = 10000;
+const MAX_CUSTOM_RETIREMENT_GOAL = 500000;
 
 const SectionHeader = ({ icon: Icon, title, editing, onEdit, color }) => (
   <div className="flex items-center justify-between py-5 sm:py-6 px-4 sm:px-8 border-b border-[#1E293B]/5 transition-all gap-3">
@@ -127,6 +137,19 @@ const PageContent = () => {
     const retirementMode = normalizeRetirementMode(source);
     const includeNps = includesNpsForMode(retirementMode);
     const includeOther = includesOtherForMode(retirementMode);
+    const lifestyle = normalizeLifestylePreset(source?.lifestyle, 'comfortable');
+    const retirementGoalType = source?.retirementGoalType === 'custom' ? 'custom' : 'preset';
+    const customRetirementMonthlyAmount = retirementGoalType === 'custom'
+      ? Math.max(0, parseNumericInput(source?.customRetirementMonthlyAmount))
+      : 0;
+    const lifestyleMode = retirementGoalType === 'custom' ? LIFESTYLE_MODES.CUSTOM : LIFESTYLE_MODES.PRESET;
+    const monthlyIncome = parseNumericInput(source.monthlyIncome);
+    const presetSpendFallback = monthlyIncome * (LIFESTYLE_MULTIPLIERS[lifestyle] || LIFESTYLE_MULTIPLIERS.comfortable);
+    const normalizedCustomGoal = retirementGoalType === 'custom'
+      ? (customRetirementMonthlyAmount > 0
+        ? Math.max(MIN_CUSTOM_RETIREMENT_GOAL, Math.min(MAX_CUSTOM_RETIREMENT_GOAL, customRetirementMonthlyAmount))
+        : 0)
+      : 0;
     const assumptionValues = OTHER_SCHEME_CONFIGS.reduce((acc, scheme) => {
       acc[scheme.assumptionField] = normalizeAssumedReturnPct(source?.[scheme.assumptionField], scheme.annualReturn);
       return acc;
@@ -135,8 +158,22 @@ const PageContent = () => {
     return {
       ...source,
       retirementMode,
+      lifestyle,
+      retirementGoalType,
+      lifestyleMode,
+      customRetirementMonthlyAmount: normalizedCustomGoal,
+      customLifestyleMonthlySpend: normalizedCustomGoal,
+      lifestyleConfig: normalizeLifestyleConfig({
+        ...createDefaultLifestyleConfig(lifestyle),
+        ...source?.lifestyleConfig,
+        mode: lifestyleMode,
+        preset: lifestyle,
+        customMonthlySpend: lifestyleMode === LIFESTYLE_MODES.CUSTOM
+          ? (normalizedCustomGoal > 0 ? normalizedCustomGoal : presetSpendFallback)
+          : 0,
+      }, lifestyle),
       age: parseIntegerInput(source.age, 28),
-      monthlyIncome: parseNumericInput(source.monthlyIncome),
+      monthlyIncome,
       npsUsage: includeNps ? (source.npsUsage || 'manual') : 'none',
       npsContribution: includeNps ? parseNumericInput(source.npsContribution) : 0,
       npsCorpus: includeNps ? parseNumericInput(source.npsCorpus) : 0,
@@ -185,6 +222,14 @@ const PageContent = () => {
       if (parsedData.monthlyIncome <= 0) {
         showToast('Monthly income must be a positive number.', 'red');
         return;
+      }
+
+      if (parsedData.retirementGoalType === 'custom') {
+        const customGoal = Number(parsedData.customRetirementMonthlyAmount) || 0;
+        if (customGoal < MIN_CUSTOM_RETIREMENT_GOAL || customGoal > MAX_CUSTOM_RETIREMENT_GOAL) {
+          showToast(`Custom goal must be between ₹${MIN_CUSTOM_RETIREMENT_GOAL.toLocaleString('en-IN')} and ₹${MAX_CUSTOM_RETIREMENT_GOAL.toLocaleString('en-IN')}.`, 'red');
+          return;
+        }
       }
 
       const includeNps = includesNpsForMode(parsedData.retirementMode);
@@ -667,12 +712,19 @@ const PageContent = () => {
 
               <div className="space-y-4">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Retirement Lifestyle</label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {['essential', 'comfortable', 'premium'].map(l => (
                         <button 
                           key={l}
-                          onClick={() => setFormData({...formData, lifestyle: l})}
-                          className={`touch-target p-4 rounded-xl border-2 border-[#1E293B] text-left transition-all ${formData.lifestyle === l ? 'bg-[#FFFDF5] border-[#FBBF24] shadow-[4px_4px_0_0_#FBBF24] -translate-y-1' : 'bg-white opacity-50'}`}
+                          onClick={() => setFormData({
+                            ...formData,
+                            lifestyle: l,
+                            retirementGoalType: 'preset',
+                            customRetirementMonthlyAmount: 0,
+                            customLifestyleMonthlySpend: 0,
+                            lifestyleMode: LIFESTYLE_MODES.PRESET,
+                          })}
+                          className={`touch-target p-4 rounded-xl border-2 border-[#1E293B] text-left transition-all ${(formData.retirementGoalType !== 'custom' && formData.lifestyle === l) ? 'bg-[#FFFDF5] border-[#FBBF24] shadow-[4px_4px_0_0_#FBBF24] -translate-y-1' : 'bg-white opacity-50'}`}
                         >
                           <div className="font-black uppercase tracking-widest text-xs mb-1">{l}</div>
                           <div className="text-[9px] font-bold text-slate-400 tracking-wide">
@@ -680,7 +732,50 @@ const PageContent = () => {
                           </div>
                         </button>
                     ))}
+                    <button
+                      onClick={() => setFormData({
+                        ...formData,
+                        retirementGoalType: 'custom',
+                        lifestyleMode: LIFESTYLE_MODES.CUSTOM,
+                        lifestyle: formData.lifestyle || 'comfortable',
+                      })}
+                      className={`touch-target p-4 rounded-xl border-2 border-[#1E293B] text-left transition-all ${formData.retirementGoalType === 'custom' ? 'bg-[#FFFDF5] border-[#FBBF24] shadow-[4px_4px_0_0_#FBBF24] -translate-y-1' : 'bg-white opacity-50'}`}
+                    >
+                      <div className="font-black uppercase tracking-widest text-xs mb-1">Custom</div>
+                      <div className="text-[9px] font-bold text-slate-400 tracking-wide">
+                        MY OWN MONTHLY GOAL
+                      </div>
+                    </button>
                   </div>
+
+                  {formData.retirementGoalType === 'custom' && (
+                    <div className="pt-2 space-y-2 animate-fade-in">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
+                        How much monthly income do you want in retirement?
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-slate-300">₹</span>
+                        <input
+                          type="number"
+                          min={MIN_CUSTOM_RETIREMENT_GOAL}
+                          max={MAX_CUSTOM_RETIREMENT_GOAL}
+                          className="w-full bg-slate-50 border-2 border-[#1E293B] rounded-full px-10 py-3 font-bold text-sm outline-none"
+                          value={formData.customRetirementMonthlyAmount || ''}
+                          placeholder="e.g. 75,000"
+                          onChange={e => setFormData({
+                            ...formData,
+                            retirementGoalType: 'custom',
+                            lifestyleMode: LIFESTYLE_MODES.CUSTOM,
+                            customRetirementMonthlyAmount: parseNumericInput(e.target.value),
+                            customLifestyleMonthlySpend: parseNumericInput(e.target.value),
+                          })}
+                        />
+                      </div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                        Min ₹{MIN_CUSTOM_RETIREMENT_GOAL.toLocaleString('en-IN')} · Max ₹{MAX_CUSTOM_RETIREMENT_GOAL.toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                  )}
               </div>
 
               <ScoreImpact oldScore={userData.score} newScore={simulatedResults.score} />
@@ -699,11 +794,15 @@ const PageContent = () => {
               </div>
               <div>
                   <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Lifestyle</div>
-                  <div className="font-bold text-[#1E293B] uppercase">{userData.lifestyle}</div>
+                  <div className="font-bold text-[#1E293B] uppercase">{userData.retirementGoalType === 'custom' ? 'custom' : userData.lifestyle}</div>
               </div>
               <div>
                   <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Future Need</div>
-                  <div className="font-bold text-[#FBBF24]">{formatIndian(userData.monthlySpendAtRetirement)}/m</div>
+                  <div className="font-bold text-[#FBBF24]">
+                    {userData.retirementGoalType === 'custom' && Number(userData.customRetirementMonthlyAmount) > 0
+                      ? `${formatIndian(userData.customRetirementMonthlyAmount)}/m`
+                      : `${formatIndian(userData.monthlySpendAtRetirement)}/m`}
+                  </div>
               </div>
             </div>
           )}

@@ -17,6 +17,8 @@ export const INITIAL_USER_DATA = {
   retireAge: 60,
   lifestyle: '',
   lifestyleConfig: createDefaultLifestyleConfig('comfortable'),
+  customRetirementMonthlyAmount: 0,
+  retirementGoalType: 'preset',
   addSavings: false,
   totalSavings: '',
   usesPPF: false,
@@ -63,12 +65,18 @@ export const withInitialUserData = (userData) => {
   const knownMode = Object.values(RETIREMENT_MODES).includes(merged.retirementMode)
     ? merged.retirementMode
     : inferRetirementMode(merged);
+  const retirementGoalType = merged.retirementGoalType === 'custom' ? 'custom' : 'preset';
+  const customRetirementMonthlyAmount = retirementGoalType === 'custom'
+    ? Math.max(0, Number(merged.customRetirementMonthlyAmount) || 0)
+    : 0;
 
   return {
     ...merged,
     retirementMode: knownMode,
     lifestyle: fallbackLifestyle,
     lifestyleConfig: normalizeLifestyleConfig(merged.lifestyleConfig, fallbackLifestyle),
+    retirementGoalType,
+    customRetirementMonthlyAmount,
   };
 };
 

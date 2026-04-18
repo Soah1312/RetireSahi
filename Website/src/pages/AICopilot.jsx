@@ -451,6 +451,15 @@ const ChatInterface = () => {
     const yearsToRetire = displayData.retireAge - displayData.age;
     const annualIncome = (Number(displayData.monthlyIncome) || 0) * 12;
     const basicSalary = annualIncome * (displayData.workContext === 'Government' ? 0.50 : 0.40);
+    const goalMonthly = Math.max(0, Number(displayData.retirementGoalMonthly || displayData.customRetirementMonthlyAmount || displayData.monthlySpendAtRetirement) || 0);
+    const projectedMonthlyPension = Math.max(0, Number(displayData.projectedMonthlyPension || displayData.monthlyAnnuityIncome) || 0);
+    const goalGap = Math.max(0, Number(displayData.retirementGoalGap) || Math.max(0, goalMonthly - projectedMonthlyPension));
+    const requiredGoalContribution = Math.max(0, Number(displayData.requiredMonthlyContributionForGoal || displayData.npsContribution) || 0);
+    const retirementGoalContext = displayData.retirementGoalType === 'custom' && Number(displayData.customRetirementMonthlyAmount) > 0
+      ? `User's retirement goal: ₹${formatIndian(displayData.customRetirementMonthlyAmount)}/month in retirement income`
+      : `User's retirement lifestyle goal: ${displayData.lifestyle} (approx ₹${formatIndian(goalMonthly)}/month)`;
+    const retirementGapContext = `Current projected monthly pension: ₹${formatIndian(projectedMonthlyPension)}. Gap to goal: ₹${formatIndian(goalGap)}/month.`;
+    const requiredContributionContext = `Required monthly contribution to meet goal: ₹${formatIndian(requiredGoalContribution)}/month.`;
 
     const selectedFields = isFullMode ? GROQ_FULL_MODE_FIELDS : GROQ_PRIVACY_MODE_FIELDS;
     const selectedProfile = Object.fromEntries(
@@ -468,6 +477,9 @@ RETIREMENT INSIGHTS (computed from encrypted data):
 - Lump sum at ${displayData.retireAge}: ${formatIndian(displayData.lumpSumCorpus)}
 - Monthly annuity pension: ${formatIndian(displayData.monthlyAnnuityIncome)}
 - Blended return: ${((displayData.blendedReturn || 0) * 100).toFixed(2)}%
+- ${retirementGoalContext}
+- ${retirementGapContext}
+- ${requiredContributionContext}
 `;
 
     const rawContext = isFullMode
@@ -496,6 +508,7 @@ PROFILE:
 - Years to retire: ${yearsToRetire}
 - Sector: ${displayData.workContext}
 - Lifestyle: ${displayData.lifestyle}
+- Goal type: ${displayData.retirementGoalType === 'custom' ? 'Custom' : 'Preset'} | Goal monthly retirement income: ₹${formatIndian(goalMonthly)}
 - Tax regime: ${displayData.taxRegime || 'New Regime'}
 - Equity allocation: ${displayData.npsEquity}%
 - Max equity cap by age: ${maxEquityPct}%

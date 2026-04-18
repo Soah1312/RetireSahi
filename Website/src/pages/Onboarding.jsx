@@ -38,6 +38,8 @@ const MAX_NPS_CONTRIBUTION = 100000000; // 10 Cr
 const MAX_NPS_CORPUS = 1000000000; // 100 Cr
 const MAX_TAX_INPUT = 10000000; // 1 Cr
 const MAX_CUSTOM_LIFESTYLE_SPEND = 10000000; // 1 Cr
+const MIN_CUSTOM_RETIREMENT_GOAL = 10000;
+const MAX_CUSTOM_RETIREMENT_GOAL = 500000;
 const MAX_SCHEME_MONTHLY_CONTRIBUTION = 100000000; // 10 Cr
 
 const parseNumericInput = (value) => {
@@ -258,8 +260,10 @@ export default function Onboarding() {
     npsUsage: '',
     npsContribution: '',
     npsCorpus: '',
-    lifestyleMode: '',
+    lifestyleMode: 'preset',
     customLifestyleMonthlySpend: '',
+    retirementGoalType: 'preset',
+    customRetirementMonthlyAmount: '',
     lifestyle: '',
     totalSavings: '',
     ppfMonthlyContribution: '',
@@ -426,21 +430,18 @@ export default function Onboarding() {
 
   const validateLifestyleStep = (data) => {
     const nextErrors = {};
+    const goalType = data.retirementGoalType === 'custom' ? 'custom' : 'preset';
 
-    if (!data.lifestyleMode) {
-      nextErrors.lifestyleMode = 'Choose preset or custom mode';
-    }
-
-    if (!data.lifestyle) {
+    if (goalType === 'preset' && !data.lifestyle) {
       nextErrors.lifestyle = 'Choose a lifestyle profile';
     }
 
-    if (data.lifestyleMode === LIFESTYLE_MODES.CUSTOM) {
-      const customSpend = parseNumericInput(data.customLifestyleMonthlySpend);
+    if (goalType === 'custom') {
+      const customSpend = parseNumericInput(data.customRetirementMonthlyAmount);
       if (!(customSpend > 0)) {
-        nextErrors.customLifestyleMonthlySpend = 'Add a custom monthly lifestyle amount';
-      } else if (customSpend > MAX_CUSTOM_LIFESTYLE_SPEND) {
-        nextErrors.customLifestyleMonthlySpend = 'Custom spend is too large (sanity cap exceeded)';
+        nextErrors.customRetirementMonthlyAmount = 'Add your target monthly retirement income';
+      } else if (customSpend < MIN_CUSTOM_RETIREMENT_GOAL || customSpend > MAX_CUSTOM_RETIREMENT_GOAL) {
+        nextErrors.customRetirementMonthlyAmount = `Goal must be between ₹${MIN_CUSTOM_RETIREMENT_GOAL.toLocaleString('en-IN')} and ₹${MAX_CUSTOM_RETIREMENT_GOAL.toLocaleString('en-IN')}`;
       }
     }
 
@@ -473,11 +474,18 @@ export default function Onboarding() {
     const modeIncludesNps = retirementMode === RETIREMENT_MODES.NPS_ONLY || retirementMode === RETIREMENT_MODES.HYBRID;
     const modeIncludesOther = retirementMode === RETIREMENT_MODES.NON_NPS_ONLY || retirementMode === RETIREMENT_MODES.HYBRID;
     const lifestyle = (formData.lifestyle || 'comfortable').toLowerCase();
-    const lifestyleMode = formData.lifestyleMode === LIFESTYLE_MODES.CUSTOM
+    const retirementGoalType = formData.retirementGoalType === 'custom' ? 'custom' : 'preset';
+    const lifestyleMode = retirementGoalType === 'custom'
       ? LIFESTYLE_MODES.CUSTOM
       : LIFESTYLE_MODES.PRESET;
     const presetSpendFallback = monthlyIncome * (LIFESTYLE_MULTIPLIERS[lifestyle] || LIFESTYLE_MULTIPLIERS.comfortable);
-    const customMonthlySpend = Math.max(0, Math.min(MAX_CUSTOM_LIFESTYLE_SPEND, parseNumericInput(formData.customLifestyleMonthlySpend) || 0));
+    const customRetirementMonthlyAmount = Math.max(
+      0,
+      Math.min(MAX_CUSTOM_RETIREMENT_GOAL, parseNumericInput(formData.customRetirementMonthlyAmount) || 0)
+    );
+    const customMonthlySpend = retirementGoalType === 'custom'
+      ? customRetirementMonthlyAmount
+      : Math.max(0, Math.min(MAX_CUSTOM_LIFESTYLE_SPEND, parseNumericInput(formData.customLifestyleMonthlySpend) || 0));
 
     return {
       ...formData,
@@ -507,7 +515,9 @@ export default function Onboarding() {
       otherSchemeMonthlyContribution: modeIncludesOther ? Math.min(parseNumericInput(formData.otherSchemeMonthlyContribution) || 0, MAX_SCHEME_MONTHLY_CONTRIBUTION) : 0,
       retireAge: parseIntegerInput(formData.retireAge, 60),
       lifestyle,
+      retirementGoalType,
       lifestyleMode,
+      customRetirementMonthlyAmount: retirementGoalType === 'custom' ? customRetirementMonthlyAmount : 0,
       customLifestyleMonthlySpend: customMonthlySpend,
       lifestyleConfig: normalizeLifestyleConfig({
         ...createDefaultLifestyleConfig(lifestyle),
@@ -589,7 +599,7 @@ export default function Onboarding() {
     if (step === 3) clearErrorsForFields(['monthlyIncome']);
     if (step === 4) clearErrorsForFields(['retirementMode', 'npsUsage', 'npsContribution', 'npsCorpus']);
     if (step === 5) clearErrorsForFields(['age', 'retireAge']);
-    if (step === 6) clearErrorsForFields(['lifestyleMode', 'lifestyle', 'customLifestyleMonthlySpend']);
+    if (step === 6) clearErrorsForFields(['retirementGoalType', 'lifestyle', 'customRetirementMonthlyAmount']);
 
     setStep((s) => s + 1);
   };
@@ -876,51 +886,6 @@ export default function Onboarding() {
             {step === 6 && (
               <div className="animate-fade-in space-y-4">
                 <h2 className="font-heading font-extrabold text-2xl md:text-3xl leading-tight text-center mb-6">What kind of life do you want after retirement?</h2>
-                <div className="bg-[#FFFDF5] border-2 border-[#1E293B] rounded-2xl p-4 md:p-5 space-y-3">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <p className="font-black text-xs uppercase tracking-widest text-[#1E293B]/60">Planning mode</p>
-                    <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full border border-[#1E293B] bg-[#34D399]/20 text-[#065F46]">
-                      Recommended: preset
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => {
-                        setFormData({ ...formData, lifestyleMode: LIFESTYLE_MODES.PRESET });
-                        clearErrorsForFields(['lifestyleMode', 'customLifestyleMonthlySpend']);
-                      }}
-                      className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs transition-all ${formData.lifestyleMode === LIFESTYLE_MODES.PRESET ? 'bg-[#34D399] text-[#1E293B] shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
-                    >
-                      Preset
-                    </button>
-                    <button
-                      onClick={() => {
-                        setFormData({ ...formData, lifestyleMode: LIFESTYLE_MODES.CUSTOM });
-                        clearErrorsForFields(['lifestyleMode']);
-                      }}
-                      className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs transition-all ${formData.lifestyleMode === LIFESTYLE_MODES.CUSTOM ? 'bg-[#8B5CF6] text-white shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
-                    >
-                      Custom
-                    </button>
-                  </div>
-                  {errors.lifestyleMode && (
-                    <p className="text-xs font-bold text-[#EF4444] uppercase tracking-wide">{errors.lifestyleMode}</p>
-                  )}
-                  {formData.lifestyleMode === LIFESTYLE_MODES.CUSTOM && (
-                    <div className="pt-1 animate-fade-in space-y-2">
-                      <InputField
-                        label="Custom monthly lifestyle spend (₹)"
-                        type="number"
-                        name="customLifestyleMonthlySpend"
-                        value={formData.customLifestyleMonthlySpend}
-                        onChange={handleChange}
-                        placeholder="60,000"
-                        error={errors.customLifestyleMonthlySpend}
-                        autoFormatIndian
-                      />
-                    </div>
-                  )}
-                </div>
                 {[
                   { val: 'essential', label: 'Essential', desc: '40% of income — basic needs only' },
                   { val: 'comfortable', label: 'Comfortable', desc: '60% of income — realistic middle India' },
@@ -928,13 +893,73 @@ export default function Onboarding() {
                 ].map(opt => (
                   <CardOption 
                     key={opt.val} label={opt.label} desc={opt.desc} 
-                    selected={formData.lifestyle === opt.val}
+                    selected={formData.retirementGoalType !== 'custom' && formData.lifestyle === opt.val}
                     onClick={() => {
-                      setFormData({ ...formData, lifestyle: opt.val, lifestyleMode: formData.lifestyleMode || LIFESTYLE_MODES.PRESET });
-                      clearErrorsForFields(['lifestyle', 'lifestyleMode']);
+                      setFormData({
+                        ...formData,
+                        lifestyle: opt.val,
+                        retirementGoalType: 'preset',
+                        lifestyleMode: LIFESTYLE_MODES.PRESET,
+                        customRetirementMonthlyAmount: '',
+                        customLifestyleMonthlySpend: '',
+                      });
+                      clearErrorsForFields(['lifestyle', 'retirementGoalType', 'customRetirementMonthlyAmount']);
                     }} 
                   />
                 ))}
+
+                <CardOption
+                  label="Custom"
+                  desc={`Set your own monthly retirement income goal (₹${MIN_CUSTOM_RETIREMENT_GOAL.toLocaleString('en-IN')} - ₹${MAX_CUSTOM_RETIREMENT_GOAL.toLocaleString('en-IN')})`}
+                  selected={formData.retirementGoalType === 'custom'}
+                  onClick={() => {
+                    setFormData({
+                      ...formData,
+                      retirementGoalType: 'custom',
+                      lifestyleMode: LIFESTYLE_MODES.CUSTOM,
+                      lifestyle: formData.lifestyle || 'comfortable',
+                    });
+                    clearErrorsForFields(['retirementGoalType', 'customRetirementMonthlyAmount']);
+                  }}
+                />
+
+                {formData.retirementGoalType === 'custom' && (
+                  <div className="bg-[#FFFDF5] border-2 border-[#1E293B] rounded-2xl p-4 md:p-5 animate-fade-in space-y-2">
+                    <label className="block font-black text-xs uppercase tracking-widest text-[#1E293B]/60">
+                      How much monthly income do you want in retirement?
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-[#1E293B]/50">₹</span>
+                      <input
+                        type="number"
+                        name="customRetirementMonthlyAmount"
+                        min={MIN_CUSTOM_RETIREMENT_GOAL}
+                        max={MAX_CUSTOM_RETIREMENT_GOAL}
+                        value={sanitizeNumericInput(String(formData.customRetirementMonthlyAmount || ''))}
+                        onChange={(e) => {
+                          const normalizedValue = sanitizeNumericInput(e.target.value);
+                          setFormData({
+                            ...formData,
+                            retirementGoalType: 'custom',
+                            lifestyleMode: LIFESTYLE_MODES.CUSTOM,
+                            customRetirementMonthlyAmount: normalizedValue,
+                            customLifestyleMonthlySpend: normalizedValue,
+                          });
+                          clearErrorsForFields(['customRetirementMonthlyAmount']);
+                        }}
+                        placeholder="e.g. 75,000"
+                        className="w-full border-2 border-[#1E293B] rounded-xl p-2.5 pl-8 text-sm font-bold bg-white focus:outline-none focus:shadow-[3px_3px_0_0_#8B5CF6]"
+                      />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#1E293B]/40">
+                      Min ₹{MIN_CUSTOM_RETIREMENT_GOAL.toLocaleString('en-IN')} · Max ₹{MAX_CUSTOM_RETIREMENT_GOAL.toLocaleString('en-IN')}
+                    </p>
+                    {errors.customRetirementMonthlyAmount && (
+                      <p className="text-xs font-bold text-[#EF4444] uppercase tracking-wide">{errors.customRetirementMonthlyAmount}</p>
+                    )}
+                  </div>
+                )}
+
                 {errors.lifestyle && (
                   <p className="text-xs font-bold text-[#EF4444] uppercase tracking-wide text-center">{errors.lifestyle}</p>
                 )}
@@ -1105,9 +1130,10 @@ export default function Onboarding() {
                   (step === 3 && !formData.monthlyIncome) ||
                   (step === 4 && (!formData.retirementMode || (includesNps && !formData.npsUsage))) ||
                   (step === 6 && (
-                    !formData.lifestyleMode ||
-                    !formData.lifestyle ||
-                    (formData.lifestyleMode === LIFESTYLE_MODES.CUSTOM && !(parseNumericInput(formData.customLifestyleMonthlySpend) > 0))
+                    (formData.retirementGoalType === 'custom'
+                      ? !(parseNumericInput(formData.customRetirementMonthlyAmount) >= MIN_CUSTOM_RETIREMENT_GOAL
+                        && parseNumericInput(formData.customRetirementMonthlyAmount) <= MAX_CUSTOM_RETIREMENT_GOAL)
+                      : !formData.lifestyle)
                   )) ||
                   (step === 8 && includesOtherSchemes && selectedSchemeConfigs.length === 0)
                 }
@@ -1177,6 +1203,40 @@ export default function Onboarding() {
                    )}
                  </div>
                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4">
+                  <div className="bg-white border-2 border-[#1E293B] rounded-2xl p-4 md:p-5">
+                    <div className="font-bold uppercase tracking-widest text-[#1E293B]/60 text-[10px] mb-2">Retirement Goal Gap</div>
+                    {(results.retirementGoalGap || 0) > 0 ? (
+                      <>
+                        <div className="font-heading font-black text-xl md:text-2xl text-[#EF4444]">Gap: {formatCurrency(results.retirementGoalGap)}/month</div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2">
+                          Projected monthly pension: {formatCurrency(results.projectedMonthlyPension || results.monthlyAnnuityIncome)} · Goal: {formatCurrency(results.retirementGoalMonthly)}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="font-heading font-black text-xl md:text-2xl text-[#34D399]">You are on track</div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2">
+                          Projected monthly pension meets your retirement goal.
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="bg-white border-2 border-[#1E293B] rounded-2xl p-4 md:p-5">
+                    <div className="font-bold uppercase tracking-widest text-[#1E293B]/60 text-[10px] mb-2">Required NPS Contribution</div>
+                    {(results.isRetirementGoalOnTrack || false) ? (
+                      <div className="font-bold text-sm md:text-base text-[#34D399] uppercase tracking-widest">
+                        You're on track to meet your retirement goal
+                      </div>
+                    ) : (
+                      <div className="font-bold text-sm md:text-base text-[#1E293B] uppercase tracking-widest leading-relaxed">
+                        To reach your goal, you'd need to contribute {formatCurrency(results.requiredMonthlyContributionForGoal)}/month instead of {formatCurrency(results.monthlyContrib)}/month.
+                      </div>
+                    )}
+                  </div>
+                </div>
              </div>
              <button onClick={() => navigate('/dashboard')} className="candy-btn w-full py-4 text-lg md:text-xl font-black uppercase tracking-widest pop-shadow hover:bg-[#1E293B]">
                Go To Dashboard

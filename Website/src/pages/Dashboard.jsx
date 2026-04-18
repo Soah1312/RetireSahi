@@ -248,6 +248,24 @@ export default function Dashboard() {
     });
   }, [userData, simValues]);
 
+   const retirementGoalInsights = useMemo(() => {
+      const goalMonthly = Math.max(0, Number(baseResults?.retirementGoalMonthly) || 0);
+      const projectedMonthlyPension = Math.max(0, Number(baseResults?.projectedMonthlyPension ?? baseResults?.monthlyAnnuityIncome) || 0);
+      const goalGap = Math.max(0, Number(baseResults?.retirementGoalGap) || Math.max(0, goalMonthly - projectedMonthlyPension));
+      const currentContribution = Math.max(0, Number(baseResults?.monthlyContrib) || 0);
+      const requiredContribution = Math.max(0, Number(baseResults?.requiredMonthlyContributionForGoal) || currentContribution);
+      const onTrack = goalGap <= 0 || requiredContribution <= currentContribution;
+
+      return {
+         goalMonthly,
+         projectedMonthlyPension,
+         goalGap,
+         currentContribution,
+         requiredContribution,
+         onTrack,
+      };
+   }, [baseResults]);
+
    const taxPosition = useMemo(() => {
       if (!userData) {
          return {
@@ -672,6 +690,47 @@ export default function Dashboard() {
                   </div>
                </div>
             </section>
+
+                  <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
+                     <div className="bg-white border-2 border-[#1E293B] rounded-[20px] p-6 pop-shadow">
+                        <div className="text-[10px] font-black uppercase tracking-[2px] text-[#1E293B]/45 mb-2">Retirement Goal Gap</div>
+                        {retirementGoalInsights.onTrack ? (
+                           <>
+                              <div className="font-heading font-extrabold text-2xl text-[#059669]">You are on track</div>
+                              <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                 Projected pension {formatIndian(retirementGoalInsights.projectedMonthlyPension)}/m meets your goal of {formatIndian(retirementGoalInsights.goalMonthly)}/m.
+                              </p>
+                           </>
+                        ) : (
+                           <>
+                              <div className="font-heading font-extrabold text-2xl text-[#EF4444]">Gap: {formatIndian(retirementGoalInsights.goalGap)}/m</div>
+                              <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                 Your NPS is projected to give {formatIndian(retirementGoalInsights.projectedMonthlyPension)}/month.
+                                 Your goal is {formatIndian(retirementGoalInsights.goalMonthly)}/month.
+                              </p>
+                           </>
+                        )}
+                     </div>
+
+                     <div className="bg-white border-2 border-[#1E293B] rounded-[20px] p-6 pop-shadow">
+                        <div className="text-[10px] font-black uppercase tracking-[2px] text-[#1E293B]/45 mb-2">Contribution Required</div>
+                        {retirementGoalInsights.onTrack ? (
+                           <>
+                              <div className="font-heading font-extrabold text-2xl text-[#059669]">You are on track to meet your retirement goal</div>
+                              <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                 Current monthly NPS contribution: {formatIndian(retirementGoalInsights.currentContribution)}.
+                              </p>
+                           </>
+                        ) : (
+                           <>
+                              <div className="font-heading font-extrabold text-2xl text-[#8B5CF6]">{formatIndian(retirementGoalInsights.requiredContribution)}/m</div>
+                              <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                 To reach your goal, you'd need to contribute {formatIndian(retirementGoalInsights.requiredContribution)}/month instead of {formatIndian(retirementGoalInsights.currentContribution)}/month.
+                              </p>
+                           </>
+                        )}
+                     </div>
+                  </section>
 
             {/* 2. Your Biggest Lever */}
             <section>
