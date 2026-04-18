@@ -357,9 +357,29 @@ function computeFutureValueWithAnnualStepUp(corpus, monthlyContribution, monthly
 }
 
 function resolveRetirementMode(data) {
-  return Object.values(RETIREMENT_MODES).includes(data?.retirementMode)
-    ? data.retirementMode
-    : inferRetirementMode(data)
+  const inferredMode = inferRetirementMode(data)
+
+  if (!Object.values(RETIREMENT_MODES).includes(data?.retirementMode)) {
+    return inferredMode
+  }
+
+  const explicitMode = data.retirementMode
+  const hasNpsData =
+    parseAmount(data?.npsContribution) > 0 ||
+    parseAmount(data?.npsCorpus) > 0 ||
+    (data?.npsUsage && data?.npsUsage !== 'none')
+  const hasOtherData =
+    parseAmount(data?.totalSavings) > 0 ||
+    getTotalOtherSchemeMonthlyContribution(data) > 0
+
+  const explicitIncludesNps = explicitMode !== RETIREMENT_MODES.NON_NPS_ONLY
+  const explicitIncludesOther = explicitMode !== RETIREMENT_MODES.NPS_ONLY
+
+  if ((!explicitIncludesNps && hasNpsData) || (!explicitIncludesOther && hasOtherData)) {
+    return inferredMode
+  }
+
+  return explicitMode
 }
 
 function getPrimaryOtherSchemeConfig(data) {
@@ -394,10 +414,8 @@ export function calculateRetirement(data) {
   const npsCorpusRaw = parseAmount(data.npsCorpus)
   const npsCorpus = includeNps ? npsCorpusRaw : 0
 
-  const explicitMode = Object.values(RETIREMENT_MODES).includes(data?.retirementMode)
   const rawOtherSavings = parseAmount(data.totalSavings)
-  const legacyOtherSavings = data.addSavings ? rawOtherSavings : 0
-  const otherSavings = includeOther ? (explicitMode ? rawOtherSavings : legacyOtherSavings) : 0
+  const otherSavings = includeOther ? rawOtherSavings : 0
 
   const rawOtherMonthlyContrib = includeOther ? getTotalOtherSchemeMonthlyContribution(data) : 0
   const otherMonthlyContrib = Math.min(Math.max(0, rawOtherMonthlyContrib), Math.max(0, monthlyIncome))

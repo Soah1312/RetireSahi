@@ -142,9 +142,9 @@ export function inferRetirementMode(data = {}) {
   const hasNpsUsage = data?.npsUsage && data?.npsUsage !== 'none';
   const hasNps = hasNpsUsage || npsCorpus > 0 || npsContrib > 0;
 
-  const legacySavings = Boolean(data?.addSavings) && parseAmount(data?.totalSavings) > 0;
+  const hasOtherSavings = parseAmount(data?.totalSavings) > 0;
   const hasSchemes = getTotalOtherSchemeMonthlyContribution(data) > 0;
-  const hasOther = legacySavings || hasSchemes;
+  const hasOther = hasOtherSavings || hasSchemes;
 
   if (hasNps && hasOther) return RETIREMENT_MODES.HYBRID;
   if (hasNps) return RETIREMENT_MODES.NPS_ONLY;

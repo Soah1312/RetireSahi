@@ -115,9 +115,9 @@ const ScenarioCard = ({ title, impact, desc, onClick }) => (
   </button>
 );
 
-const MilestoneItem = ({ milestone, age, achieved, color }) => (
+const MilestoneItem = ({ milestone, age, achieved, color, achievedColor }) => (
   <div className="flex-shrink-0 flex flex-col items-center">
-    <div className={`px-6 py-3 rounded-full border-2 border-[#1E293B] font-black uppercase tracking-widest text-sm flex items-center gap-2 group transition-all cubic`} style={{ backgroundColor: achieved ? '#34D399' : color, color: achieved ? '#1E293B' : 'white', boxShadow: '3px 3px 0 0 #1E293B' }}>
+      <div className={`px-6 py-3 rounded-full border-2 border-[#1E293B] font-black uppercase tracking-widest text-sm flex items-center gap-2 group transition-all cubic`} style={{ backgroundColor: achieved ? (achievedColor || '#34D399') : color, color: achieved ? '#1E293B' : 'white', boxShadow: '3px 3px 0 0 #1E293B' }}>
        {formatIndian(milestone)}
        {achieved && <CheckCircle2 className="w-4 h-4" />}
     </div>
@@ -273,6 +273,8 @@ export default function Dashboard() {
   }, [userData, simValues]);
 
    const retirementGoalInsights = useMemo(() => {
+      const nonNpsMode = baseResults?.retirementMode === RETIREMENT_MODES.NON_NPS_ONLY;
+      const hybridMode = baseResults?.retirementMode === RETIREMENT_MODES.HYBRID;
       const goalMonthly = Math.max(0, Number(baseResults?.retirementGoalMonthly) || 0);
       const annuityIncome = Math.max(0, Number(baseResults?.monthlyAnnuityIncome) || 0);
       const lumpSumCorpus = Math.max(0, Number(baseResults?.lumpSumCorpus) || 0);
@@ -280,7 +282,10 @@ export default function Dashboard() {
          0,
          Number(baseResults?.projectedMonthlyPension) || (annuityIncome + ((lumpSumCorpus * 0.04) / 12))
       );
-      const goalGap = Math.max(0, Number(baseResults?.retirementGoalGap) || Math.max(0, goalMonthly - totalProjectedMonthlyIncome));
+      const engineGoalGap = Math.max(0, Number(baseResults?.retirementGoalGap) || 0);
+      const rawGoalGap = Math.max(0, goalMonthly - totalProjectedMonthlyIncome);
+      // Keep Non-NPS behavior unchanged; only NPS/Hybrid uses raw monthly goal gap display.
+      const goalGap = nonNpsMode ? engineGoalGap : rawGoalGap;
       const currentContribution = Math.max(0, Number(baseResults?.monthlyContrib) || 0);
       const requiredContribution = Math.max(0, Number(baseResults?.requiredMonthlyContributionForGoal) || currentContribution);
       const score = Math.max(0, Number(baseResults?.score) || 0);
@@ -292,6 +297,8 @@ export default function Dashboard() {
       const contributionIncreaseNeeded = Math.max(0, requiredContribution - currentContribution);
 
       return {
+         nonNpsMode,
+         hybridMode,
          goalMonthly,
          totalProjectedMonthlyIncome,
          goalGap,
@@ -734,14 +741,30 @@ export default function Dashboard() {
                   <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
                      <div className="bg-white border-2 border-[#1E293B] rounded-[20px] p-6 pop-shadow">
                         <div className="text-[10px] font-black uppercase tracking-[2px] text-[#1E293B]/45 mb-2">Retirement Goal Gap</div>
-                        {retirementGoalInsights.goalOnTrack ? (
-                           <>
-                              <div className="font-heading font-extrabold text-2xl text-[#059669]">Retirement goal on track</div>
-                              <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
-                                 Total projected retirement income {formatIndian(retirementGoalInsights.totalProjectedMonthlyIncome)}/month meets your goal of {formatIndian(retirementGoalInsights.goalMonthly)}/month.
-                              </p>
-                           </>
-                        ) : (
+                        {retirementGoalInsights.nonNpsMode ? (
+                          retirementGoalInsights.goalOnTrack ? (
+                             <>
+                                <div className="font-heading font-extrabold text-2xl text-[#059669]">Retirement goal on track</div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                   Total projected retirement income {formatIndian(retirementGoalInsights.totalProjectedMonthlyIncome)}/month meets your goal of {formatIndian(retirementGoalInsights.goalMonthly)}/month.
+                                </p>
+                             </>
+                          ) : (
+                             <>
+                                <div className="font-heading font-extrabold text-2xl text-[#EF4444]">Retirement goal not met</div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                   Your plan projects {formatIndian(retirementGoalInsights.totalProjectedMonthlyIncome)}/month.
+                                   Your goal is {formatIndian(retirementGoalInsights.goalMonthly)}/month.
+                                   Shortfall: {formatIndian(retirementGoalInsights.goalGap)}/month.
+                                </p>
+                                {retirementGoalInsights.fundedRatio < 0.6 && (
+                                   <p className="text-[10px] font-black uppercase tracking-widest text-[#B45309] mt-3">
+                                      Sanity check: funded ratio is {(retirementGoalInsights.fundedRatio * 100).toFixed(0)}%, below 60% threshold.
+                                   </p>
+                                )}
+                             </>
+                          )
+                        ) : retirementGoalInsights.goalGap > 0 ? (
                            <>
                               <div className="font-heading font-extrabold text-2xl text-[#EF4444]">Retirement goal not met</div>
                               <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
@@ -749,22 +772,57 @@ export default function Dashboard() {
                                  Your goal is {formatIndian(retirementGoalInsights.goalMonthly)}/month.
                                  Shortfall: {formatIndian(retirementGoalInsights.goalGap)}/month.
                               </p>
-                              {retirementGoalInsights.fundedRatio < 0.6 && (
-                                 <p className="text-[10px] font-black uppercase tracking-widest text-[#B45309] mt-3">
-                                    Sanity check: funded ratio is {(retirementGoalInsights.fundedRatio * 100).toFixed(0)}%, below 60% threshold.
-                                 </p>
-                              )}
+                           </>
+                        ) : retirementGoalInsights.readinessLow ? (
+                           <>
+                              <div className="font-heading font-extrabold text-2xl text-[#B45309]">Goal is met, but readiness is low</div>
+                              <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                 Your monthly income goal is met, but your overall readiness score is low. Build a stronger safety buffer.
+                              </p>
+                           </>
+                        ) : (
+                           <>
+                              <div className="font-heading font-extrabold text-2xl text-[#059669]">Retirement goal on track</div>
+                              <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                 Total projected retirement income {formatIndian(retirementGoalInsights.totalProjectedMonthlyIncome)}/month meets your goal of {formatIndian(retirementGoalInsights.goalMonthly)}/month.
+                              </p>
                            </>
                         )}
                      </div>
 
                      <div className="bg-white border-2 border-[#1E293B] rounded-[20px] p-6 pop-shadow">
                         <div className="text-[10px] font-black uppercase tracking-[2px] text-[#1E293B]/45 mb-2">Contribution Required</div>
-                        {!retirementGoalInsights.goalOnTrack ? (
+                        {retirementGoalInsights.nonNpsMode ? (
+                          !retirementGoalInsights.goalOnTrack ? (
+                             <>
+                                <div className="font-heading font-extrabold text-2xl text-[#8B5CF6]">{formatIndian(retirementGoalInsights.requiredContribution)}/m</div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                   To reach your {formatIndian(retirementGoalInsights.goalMonthly)}/month goal, you need {formatIndian(retirementGoalInsights.requiredContribution)}/month in NPS contributions.
+                                </p>
+                                <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                   You currently contribute {formatIndian(retirementGoalInsights.currentContribution)}/month. Increase by {formatIndian(retirementGoalInsights.contributionIncreaseNeeded)}/month to close the shortfall.
+                                </p>
+                             </>
+                          ) : retirementGoalInsights.readinessLow ? (
+                             <>
+                                <div className="font-heading font-extrabold text-2xl text-[#B45309]">Goal met, but readiness is low</div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                   Your pension goal is currently met, but your readiness score is low. Consider increasing contributions to build a safety buffer against market and longevity risk.
+                                </p>
+                             </>
+                          ) : (
+                             <>
+                                <div className="font-heading font-extrabold text-2xl text-[#059669]">You're on track</div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                   Keep your current contribution of {formatIndian(retirementGoalInsights.currentContribution)}/month to meet your retirement goal.
+                                </p>
+                             </>
+                          )
+                        ) : retirementGoalInsights.goalGap > 0 ? (
                            <>
                               <div className="font-heading font-extrabold text-2xl text-[#8B5CF6]">{formatIndian(retirementGoalInsights.requiredContribution)}/m</div>
                               <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
-                                 To reach your {formatIndian(retirementGoalInsights.goalMonthly)}/month goal, you need {formatIndian(retirementGoalInsights.requiredContribution)}/month in NPS contributions.
+                                 To reach your {formatIndian(retirementGoalInsights.goalMonthly)}/month goal, you need {formatIndian(retirementGoalInsights.requiredContribution)}/month in {retirementGoalInsights.hybridMode ? 'total contributions (NPS + other schemes)' : 'NPS contributions'}.
                               </p>
                               <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
                                  You currently contribute {formatIndian(retirementGoalInsights.currentContribution)}/month. Increase by {formatIndian(retirementGoalInsights.contributionIncreaseNeeded)}/month to close the shortfall.
@@ -831,7 +889,7 @@ export default function Dashboard() {
             {/* 3. Quick Stats Row */}
             <section id="tour-quick-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                       <QuickStat label={<>Monthly Pulse <InfoTooltip text={DASHBOARD_TIPS.monthlyPulse} /></>} value={formatIndian(baseResults?.totalMonthlyContribution || 0)} subtext="Total monthly contribution" icon={Wallet} color={COLORS.pink} />
-                      <QuickStat label={<>NPS Corpus <InfoTooltip text={DASHBOARD_TIPS.totalWealth} /></>} value={formatIndian(baseResults?.npsCorpusUsed || 0)} subtext="Current NPS value" icon={Shield} color={COLORS.violet} />
+                      <QuickStat label={<>Total Corpus <InfoTooltip text={DASHBOARD_TIPS.totalWealth} /></>} value={formatIndian(baseResults?.totalCorpus || 0)} subtext="NPS + all other savings corpus" icon={Shield} color={COLORS.violet} />
                       <QuickStat label={<>Other Savings <InfoTooltip text={DASHBOARD_TIPS.totalWealth} /></>} value={formatIndian(baseResults?.otherSavingsUsed || 0)} subtext="PPF/EPF/MF/others" icon={PiggyBank} color={COLORS.emerald} />
                <QuickStat label={<>Time Remaining <InfoTooltip text={DASHBOARD_TIPS.timeRemaining} /></>} value={`${userData?.retireAge - userData?.age} years`} subtext={`Until age ${userData?.retireAge}`} icon={Clock} color={COLORS.amber} />
             </section>
@@ -897,7 +955,8 @@ export default function Dashboard() {
                       milestone={m.target} 
                       age={m.age} 
                       achieved={m.achieved} 
-                      color={i % 2 === 0 ? COLORS.violet : COLORS.pink} 
+                                 color={i % 2 === 0 ? COLORS.violet : COLORS.pink}
+                                 achievedColor={!isNonNpsOnly ? getScoreBand(baseResults?.score).color : undefined}
                     />
                   ))}
                </div>

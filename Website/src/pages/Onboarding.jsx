@@ -124,6 +124,7 @@ const Confetti = () => (
 
 const FinalScoreArc = ({ score = 82 }) => {
   const [offset, setOffset] = useState(283);
+  const scoreBand = getScoreBand(score);
   useEffect(() => {
     const timeout = setTimeout(() => { setOffset(283 - (283 * (score / 100))); }, 300);
     return () => clearTimeout(timeout);
@@ -136,14 +137,14 @@ const FinalScoreArc = ({ score = 82 }) => {
         <svg viewBox="0 0 100 100" className="w-full h-full absolute inset-0 -rotate-90 p-4 pb-0 overflow-visible">
            <circle cx="50" cy="50" r="45" fill="none" stroke="#F1F5F9" strokeWidth="8" strokeDasharray="283" strokeLinecap="round" />
            <circle 
-            cx="50" cy="50" r="45" fill="none" stroke={COLORS.emerald} strokeWidth="8" 
+            cx="50" cy="50" r="45" fill="none" stroke={scoreBand.color} strokeWidth="8" 
             strokeDasharray="283" strokeDashoffset={offset} strokeLinecap="round"
             style={{ transition: 'stroke-dashoffset 1.5s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
           />
         </svg>
         <div className="text-center relative z-20 mt-4">
           <div className="font-heading font-extrabold text-[#1E293B] text-7xl leading-none">{score}</div>
-          <div className={`font-bold uppercase tracking-widest text-sm mt-2`} style={{ color: getScoreBand(score).color }}>{getScoreBand(score).label}</div>
+          <div className={`font-bold uppercase tracking-widest text-sm mt-2`} style={{ color: scoreBand.color }}>{scoreBand.label}</div>
         </div>
       </div>
     </div>
@@ -598,6 +599,17 @@ export default function Onboarding() {
     if (val >= 100000) return `₹${(val / 100000).toFixed(1)} L`;
     return `₹${Math.round(val).toLocaleString('en-IN')}`;
   };
+
+  const isNonNpsOnlyResult = results?.retirementMode === RETIREMENT_MODES.NON_NPS_ONLY;
+  const isHybridResult = results?.retirementMode === RETIREMENT_MODES.HYBRID;
+  const projectedMonthlyIncome = Math.max(0, Number(results?.projectedMonthlyPension ?? results?.monthlyAnnuityIncome) || 0);
+  const npsHybridGoalGapMonthly = Math.max(0, (Number(results?.retirementGoalMonthly) || 0) - projectedMonthlyIncome);
+  const displayedGoalGapMonthly = isNonNpsOnlyResult
+    ? Math.max(0, Number(results?.retirementGoalGap) || 0)
+    : npsHybridGoalGapMonthly;
+  const isCriticalOrAtRisk = (Number(results?.score) || 0) <= 50;
+  const npsHybridGoalOnTrack = displayedGoalGapMonthly <= 0 && !isCriticalOrAtRisk;
+  const contributionDelta = Math.max(0, (Number(results?.requiredMonthlyContributionForGoal) || 0) - (Number(results?.monthlyContrib) || 0));
 
   return (
     <div className="min-h-screen relative flex flex-col justify-center items-center px-3 sm:px-4 py-6 sm:py-12 overflow-hidden bg-[#FFFDF5] text-[#1E293B] selection:bg-[#F472B6] selection:text-white" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
@@ -1079,13 +1091,25 @@ export default function Onboarding() {
                    <Zap className="w-4 h-4 md:w-5 md:h-5" /> Your Biggest Lever
                  </div>
                  <div className="font-bold text-base md:text-lg leading-snug">
-                   {results.isRetirementGoalOnTrack ? (
-                     <><span className="text-[#34D399] font-black">You are fully on track!</span> Your projected pension is aligned with your retirement goal.</>
+                   {isNonNpsOnlyResult ? (
+                     results.isRetirementGoalOnTrack ? (
+                       <><span className="text-[#34D399] font-black">You are fully on track!</span> Your projected pension is aligned with your retirement goal.</>
+                     ) : (
+                       <>
+                         Increase your monthly contribution by{' '}
+                         <span className="text-[#8B5CF6] font-black">
+                           {formatCurrency(Math.max(0, (results.requiredMonthlyContributionForGoal || 0) - (results.monthlyContrib || 0)))}
+                         </span>{' '}
+                         to close your retirement goal gap.
+                       </>
+                     )
+                   ) : npsHybridGoalOnTrack ? (
+                     <><span className="text-[#059669] font-black">Goal is currently met.</span> Keep contributing to protect against market and longevity risk.</>
                    ) : (
                      <>
                        Increase your monthly contribution by{' '}
                        <span className="text-[#8B5CF6] font-black">
-                         {formatCurrency(Math.max(0, (results.requiredMonthlyContributionForGoal || 0) - (results.monthlyContrib || 0)))}
+                         {formatCurrency(contributionDelta)}
                        </span>{' '}
                        to close your retirement goal gap.
                      </>
@@ -1096,16 +1120,39 @@ export default function Onboarding() {
                 <div className="mt-4 grid grid-cols-1 gap-4">
                   <div className="bg-white border-2 border-[#1E293B] rounded-2xl p-4 md:p-5">
                     <div className="font-bold uppercase tracking-widest text-[#1E293B]/60 text-[10px] mb-2">Retirement Goal Gap</div>
-                    {(results.retirementGoalGap || 0) > 0 ? (
+                    {isNonNpsOnlyResult ? (
+                      (results.retirementGoalGap || 0) > 0 ? (
+                        <>
+                          <div className="font-heading font-black text-xl md:text-2xl text-[#EF4444]">Gap: {formatCurrency(results.retirementGoalGap)}/month</div>
+                          <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2">
+                            Projected monthly pension: {formatCurrency(results.projectedMonthlyPension || results.monthlyAnnuityIncome)} · Goal: {formatCurrency(results.retirementGoalMonthly)}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-heading font-black text-xl md:text-2xl text-[#34D399]">You are on track</div>
+                          <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2">
+                            Projected monthly pension meets your retirement goal.
+                          </p>
+                        </>
+                      )
+                    ) : displayedGoalGapMonthly > 0 ? (
                       <>
-                        <div className="font-heading font-black text-xl md:text-2xl text-[#EF4444]">Gap: {formatCurrency(results.retirementGoalGap)}/month</div>
+                        <div className="font-heading font-black text-xl md:text-2xl text-[#EF4444]">Gap: {formatCurrency(displayedGoalGapMonthly)}/month</div>
                         <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2">
-                          Projected monthly pension: {formatCurrency(results.projectedMonthlyPension || results.monthlyAnnuityIncome)} · Goal: {formatCurrency(results.retirementGoalMonthly)}
+                          Projected monthly pension: {formatCurrency(projectedMonthlyIncome)} · Goal: {formatCurrency(results.retirementGoalMonthly)}
+                        </p>
+                      </>
+                    ) : isCriticalOrAtRisk ? (
+                      <>
+                        <div className="font-heading font-black text-xl md:text-2xl text-[#B45309]">Goal met, but readiness is low</div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2">
+                          Monthly goal is met, but score is low. Build a larger buffer for safety.
                         </p>
                       </>
                     ) : (
                       <>
-                        <div className="font-heading font-black text-xl md:text-2xl text-[#34D399]">You are on track</div>
+                        <div className="font-heading font-black text-xl md:text-2xl text-[#059669]">You are on track</div>
                         <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2">
                           Projected monthly pension meets your retirement goal.
                         </p>
@@ -1114,14 +1161,28 @@ export default function Onboarding() {
                   </div>
 
                   <div className="bg-white border-2 border-[#1E293B] rounded-2xl p-4 md:p-5">
-                    <div className="font-bold uppercase tracking-widest text-[#1E293B]/60 text-[10px] mb-2">Required NPS Contribution</div>
-                    {(results.isRetirementGoalOnTrack || false) ? (
-                      <div className="font-bold text-sm md:text-base text-[#34D399] uppercase tracking-widest">
-                        You're on track to meet your retirement goal
+                    <div className="font-bold uppercase tracking-widest text-[#1E293B]/60 text-[10px] mb-2">{isNonNpsOnlyResult ? 'Required NPS Contribution' : (isHybridResult ? 'Required Total Contribution' : 'Required NPS Contribution')}</div>
+                    {isNonNpsOnlyResult ? (
+                      (results.isRetirementGoalOnTrack || false) ? (
+                        <div className="font-bold text-sm md:text-base text-[#34D399] uppercase tracking-widest">
+                          You're on track to meet your retirement goal
+                        </div>
+                      ) : (
+                        <div className="font-bold text-sm md:text-base text-[#1E293B] uppercase tracking-widest leading-relaxed">
+                          To reach your goal, you'd need to contribute {formatCurrency(results.requiredMonthlyContributionForGoal)}/month instead of {formatCurrency(results.monthlyContrib)}/month.
+                        </div>
+                      )
+                    ) : displayedGoalGapMonthly > 0 ? (
+                      <div className="font-bold text-sm md:text-base text-[#1E293B] uppercase tracking-widest leading-relaxed">
+                        To reach your goal, you'd need to contribute {formatCurrency(results.requiredMonthlyContributionForGoal)}/month in {isHybridResult ? 'total contributions (NPS + other schemes)' : 'NPS contributions'} instead of {formatCurrency(results.monthlyContrib)}/month.
+                      </div>
+                    ) : isCriticalOrAtRisk ? (
+                      <div className="font-bold text-sm md:text-base text-[#B45309] uppercase tracking-widest leading-relaxed">
+                        Goal is met, but score is low. Consider adding a safety contribution buffer.
                       </div>
                     ) : (
-                      <div className="font-bold text-sm md:text-base text-[#1E293B] uppercase tracking-widest leading-relaxed">
-                        To reach your goal, you'd need to contribute {formatCurrency(results.requiredMonthlyContributionForGoal)}/month instead of {formatCurrency(results.monthlyContrib)}/month.
+                      <div className="font-bold text-sm md:text-base text-[#059669] uppercase tracking-widest">
+                        You're on track to meet your retirement goal
                       </div>
                     )}
                   </div>
