@@ -50,6 +50,7 @@ export const INITIAL_USER_DATA = {
   isGovtEmployee: false,
   basicSalaryPct: 0.4,
   hasOptedForEmployerNPS: false,
+  employerNPSAmount: 0,
 };
 
 export const withInitialUserData = (userData) => {

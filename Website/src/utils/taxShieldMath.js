@@ -396,6 +396,167 @@ function fmt(n) {
   return new Intl.NumberFormat('en-IN').format(Math.round(n));
 }
 
+function getNewRegimeMarginalRate(taxableIncome) {
+  const income = Math.max(0, Number(taxableIncome) || 0);
+  let prev = 0;
+  for (const slab of NEW_REGIME_SLABS) {
+    if (income <= slab.upTo) {
+      return slab.rate;
+    }
+    prev = slab.upTo;
+  }
+  return NEW_REGIME_SLABS[NEW_REGIME_SLABS.length - 1]?.rate || 0;
+}
+
+function getRateJustBelowBoundary(boundary) {
+  let prevRate = 0;
+  for (const slab of NEW_REGIME_SLABS) {
+    if (slab.upTo >= boundary) {
+      return prevRate;
+    }
+    prevRate = slab.rate;
+  }
+  return prevRate;
+}
+
+/**
+ * Compute actionable tax optimization opportunities for New Regime users.
+ * Returns only actionable opportunities, sorted by annual tax saved.
+ */
+export function computeTaxOptimizations(taxInput = {}, currentTaxResult = {}) {
+  const n = (value) => Math.max(0, Number(value) || 0);
+  const taxableIncome = n(currentTaxResult?.new?.taxableIncome);
+  const marginalRate = getNewRegimeMarginalRate(taxableIncome);
+  const basicSalary = n(taxInput?.basicSalary || taxInput?.annualIncome || taxInput?.grossIncome) * (taxInput?.basicSalary ? 1 : 0.4) || n(taxInput?.basicSalary);
+  const annualIncome = n(taxInput?.annualIncome || taxInput?.grossIncome);
+  const employerNPSAnnual = n(taxInput?.npsEmployerMonthly) * 12;
+  const standardDeductionApplied = n(
+    (currentTaxResult?.deductionBreakdown || []).find((d) => d.label === 'Standard Deduction')?.new
+  );
+  const nps1bUsed = n(currentTaxResult?.nps?.deductionClaimed);
+
+  const opportunities = [];
+
+  // 1) NPS 80CCD(1B) gap
+  const nps1bGap = Math.max(0, 50000 - nps1bUsed);
+  if (nps1bGap > 0) {
+    const monthlyCost = Math.ceil(nps1bGap / 12);
+    const annualTaxSaved = Math.round(nps1bGap * marginalRate);
+    opportunities.push({
+      id: 'nps_1b',
+      title: 'Increase NPS contribution',
+      description: 'You still have room under Section 80CCD(1B). This benefit is available under New Regime when contributions are routed via employer NPS setup.',
+      actionLabel: `Add ₹${fmt(monthlyCost)}/month to NPS Tier I`,
+      monthlyCost,
+      annualTaxSaved,
+      netAnnualBenefit: annualTaxSaved - (monthlyCost * 12),
+      priority: 0,
+      howTo: `Ask your HR/payroll team to route an additional ₹${fmt(monthlyCost)}/month to your NPS Tier I account under Section 80CCD(1B). Confirm the revised amount is reflected in your salary structure and Form 16.`,
+      isTopPick: false,
+    });
+  }
+
+  // 2) Employer NPS 80CCD(2) gap
+  const employerNPSCap = basicSalary * 0.14;
+  const employerNPSGap = Math.max(0, employerNPSCap - employerNPSAnnual);
+  if (employerNPSGap > 0 && basicSalary > 0) {
+    const annualTaxSaved = Math.round(employerNPSGap * marginalRate);
+    opportunities.push({
+      id: 'employer_nps',
+      title: 'Activate employer NPS contribution (80CCD(2))',
+      description: 'Your employer NPS contribution is below the 14% of basic salary cap under the New Regime.',
+      actionLabel: `Request employer NPS of up to ₹${fmt(Math.ceil(employerNPSCap / 12))}/month`,
+      monthlyCost: 0,
+      annualTaxSaved,
+      netAnnualBenefit: annualTaxSaved,
+      priority: 0,
+      howTo: 'Request your HR department to add NPS contribution to your CTC as employer contribution. It reduces taxable income by up to 14% of basic salary with zero direct cost to you.',
+      isTopPick: false,
+    });
+  }
+
+  // 3) Standard deduction check
+  const standardDeductionGap = Math.max(0, DEDUCTION_LIMITS.standardDeduction_new - standardDeductionApplied);
+  if (standardDeductionGap > 0) {
+    const annualTaxSaved = Math.round(standardDeductionGap * marginalRate);
+    opportunities.push({
+      id: 'standard_deduction',
+      title: 'Standard deduction appears under-applied',
+      description: 'The full ₹75,000 standard deduction is expected for salaried taxpayers under the New Regime.',
+      actionLabel: 'Verify ₹75,000 standard deduction in payroll',
+      monthlyCost: 0,
+      annualTaxSaved,
+      netAnnualBenefit: annualTaxSaved,
+      priority: 0,
+      howTo: 'This is automatic for salaried employees. Confirm your payroll setup and ensure the ₹75,000 standard deduction appears correctly in Form 16.',
+      isTopPick: false,
+    });
+  }
+
+  // 4) Slab boundary nudge (within ₹15,000 above a boundary)
+  const slabBoundaries = [400000, 800000, 1200000, 1600000, 2000000, 2400000];
+  for (const boundary of slabBoundaries) {
+    const diff = taxableIncome - boundary;
+    if (diff > 0 && diff <= 15000) {
+      const neededAnnual = Math.ceil(diff);
+      const monthlyCost = Math.ceil(neededAnnual / 12);
+      const currentRate = getNewRegimeMarginalRate(taxableIncome);
+      const lowerRate = getRateJustBelowBoundary(boundary);
+      const annualTaxSaved = Math.max(0, Math.round(neededAnnual * Math.max(0, currentRate - lowerRate)));
+
+      opportunities.push({
+        id: `slab_boundary_${boundary}`,
+        title: 'Near slab boundary — small nudge can lower tax',
+        description: `You are ₹${fmt(neededAnnual)} above the ₹${fmt(boundary)} slab boundary. A small additional NPS investment can move taxable income below it.`,
+        actionLabel: `Add about ₹${fmt(monthlyCost)}/month to move below ₹${fmt(boundary)}`,
+        monthlyCost,
+        annualTaxSaved,
+        netAnnualBenefit: annualTaxSaved - (monthlyCost * 12),
+        priority: 0,
+        howTo: `Increase your NPS contribution by approximately ₹${fmt(monthlyCost)}/month so taxable income falls below ₹${fmt(boundary)}. This can keep part of your income in a lower tax slab.`,
+        isTopPick: false,
+      });
+      break;
+    }
+  }
+
+  // 5) Rebate 87A check (must be top pick whenever applicable)
+  if (taxableIncome > 1200000 && taxableIncome <= 1275000) {
+    const neededAnnual = Math.ceil(taxableIncome - 1200000);
+    const monthlyCost = Math.ceil(neededAnnual / 12);
+    opportunities.push({
+      id: 'rebate_87a',
+      title: 'Unlock full 87A rebate (zero tax zone)',
+      description: `You are within the 87A taper window. Bringing taxable income below ₹12,00,000 can unlock full rebate and potentially zero out tax liability.`,
+      actionLabel: `Invest about ₹${fmt(monthlyCost)}/month more in NPS`,
+      monthlyCost,
+      annualTaxSaved: 60000,
+      netAnnualBenefit: 60000 - (monthlyCost * 12),
+      priority: 0,
+      howTo: `Investing ₹${fmt(neededAnnual)} more this year (about ₹${fmt(monthlyCost)}/month) can reduce taxable income below ₹12 lakh, making your entire tax liability zero under 87A rebate.`,
+      isTopPick: true,
+    });
+  }
+
+  const actionable = opportunities
+    .filter((op) => op.annualTaxSaved > 0)
+    .sort((a, b) => b.annualTaxSaved - a.annualTaxSaved);
+
+  if (actionable.length === 0) return [];
+
+  let topPickId = actionable[0].id;
+  const rebate87A = actionable.find((op) => op.id === 'rebate_87a');
+  if (rebate87A) {
+    topPickId = rebate87A.id;
+  }
+
+  return actionable.map((op, index) => ({
+    ...op,
+    isTopPick: op.id === topPickId,
+    priority: index + 1,
+  }));
+}
+
 // ─── WHAT-IF SCENARIOS ───────────────────────────────────────────────────────
 
 /**

@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useContext, useMemo, useEffect, createElement } from 'react';
-import { computeTaxSavings, computeTaxWhatIf } from '../utils/taxShieldMath';
+import { computeTaxSavings, computeTaxWhatIf, computeTaxOptimizations } from '../utils/taxShieldMath';
 import { UserContext } from '../components/UserContext';
 import DashboardLayout from '../components/DashboardLayout';
 import { auth, db } from '../lib/firebase';
@@ -18,6 +18,7 @@ import {
   ShieldCheck, TrendingDown, Zap, ChevronRight,
   IndianRupee, BarChart3, Target, Info,
   CheckCircle2, Lightbulb, RefreshCw, Flame,
+  AlertTriangle,
 } from 'lucide-react';
 
 // ─── COLORS ───────────────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ function mapUserDataToTaxInput(userData) {
   const basicPct = Number(userData.basicSalaryPct) || 0.4;
   const taxRegime = String(userData.taxRegime || 'new').toLowerCase() === 'old' ? 'old' : 'new';
   const employerNpsPct = taxRegime === 'new' ? 0.14 : 0.10;
+  const explicitEmployerNpsMonthly = Math.max(0, Number(userData.employerNPSAmount) || 0);
   const isGovtEmployee = typeof userData.isGovtEmployee === 'boolean'
     ? userData.isGovtEmployee
     : userData.workContext === 'Government';
@@ -54,7 +56,9 @@ function mapUserDataToTaxInput(userData) {
     // NPS
     npsSelfMonthly:       Math.max(0, Number(userData.npsContribution) || 0),
     npsEmployerMonthly:   userData.hasOptedForEmployerNPS
-      ? Math.round(monthlyIncome * basicPct * employerNpsPct)
+      ? (explicitEmployerNpsMonthly > 0
+        ? explicitEmployerNpsMonthly
+        : Math.round(monthlyIncome * basicPct * employerNpsPct))
       : 0,
 
     // Other investments mapped to 80C instruments
@@ -90,6 +94,10 @@ const inr = (n) =>
   '₹' + new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n ?? 0);
 
 const pct = (n) => `${(n ?? 0).toFixed(1)}%`;
+const toSafeNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
 
 function Badge({ children, color = 'emerald' }) {
   const map = {
@@ -386,6 +394,7 @@ function RegimeFeaturesTable() {
 function TaxShieldContent() {
   const { userData, setUserData } = useContext(UserContext) ?? {};
   const [tab, setTab]       = useState('overview');
+  const [expandedPromptId, setExpandedPromptId] = useState(null);
   
   const [formData, setFormData] = useState(userData || {});
   const [isSaving, setIsSaving] = useState(false);
@@ -402,13 +411,18 @@ function TaxShieldContent() {
   const handleChange = (key, val) =>
     setFormData(prev => ({ ...prev, [key]: val }));
 
-  const handleSave = async () => {
+  const persistUserData = async (patch = {}) => {
     if (!auth?.currentUser) return;
     setIsSaving(true);
     try {
-      const updatedData = { ...formData, updatedAt: new Date().toISOString() };
+      const updatedData = {
+        ...formData,
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      };
       const encrypted = await encryptUserData(updatedData, auth.currentUser.uid);
       await setDoc(doc(db, 'users', auth.currentUser.uid), encrypted, { merge: true });
+      setFormData(updatedData);
       setUserData(updatedData);
       writeUserProfileCache(auth.currentUser.uid, updatedData);
     } catch (e) {
@@ -418,9 +432,94 @@ function TaxShieldContent() {
     }
   };
 
+  const handleSave = async () => {
+    await persistUserData();
+  };
+
+  const markSectionReviewed = async (sectionKey, patch = {}) => {
+    const currentCompleteness = formData?.taxShieldCompleteness || {};
+    const nextCompleteness = { ...currentCompleteness, [sectionKey]: true };
+    await persistUserData({ ...patch, taxShieldCompleteness: nextCompleteness });
+    setExpandedPromptId(null);
+  };
+
   const activeTaxRegime = String(formData?.taxRegime || userData?.taxRegime || 'new').toLowerCase() === 'old' ? 'old' : 'new';
   const isNewRegimeUser = activeTaxRegime === 'new';
   const currentTaxSummary = isNewRegimeUser ? result.new : result.old;
+  const taxOptimizations = useMemo(
+    () => (isNewRegimeUser ? computeTaxOptimizations(mappedData, result) : []),
+    [isNewRegimeUser, mappedData, result]
+  );
+  const topOptimization = taxOptimizations.find((item) => item.isTopPick) || taxOptimizations[0] || null;
+  const secondaryOptimizations = topOptimization
+    ? taxOptimizations.filter((item) => item.id !== topOptimization.id)
+    : [];
+  const completeness = formData?.taxShieldCompleteness || {};
+  const missingPrompts = useMemo(() => {
+    const monthlyIncome = Math.max(0, toSafeNumber(formData?.monthlyIncome));
+    const basicSalaryPct = toSafeNumber(formData?.basicSalaryPct);
+    const hasEmployerNPS = typeof formData?.hasOptedForEmployerNPS === 'boolean'
+      ? formData.hasOptedForEmployerNPS
+      : false;
+    const employerNPSAmount = Math.max(0, toSafeNumber(formData?.employerNPSAmount));
+    const homeLoanInterest = Math.max(0, toSafeNumber(formData?.homeLoanInterest));
+    const hraReceived = Math.max(0, toSafeNumber(formData?.houseRentAllowance_HRA));
+    const rentPaid = Math.max(0, toSafeNumber(formData?.actualRentPaid));
+
+    const prompts = [];
+
+    if (monthlyIncome <= 0) {
+      prompts.push({
+        id: 'income',
+        title: 'Add monthly income',
+        description: 'Income is required to compute realistic tax opportunities.',
+      });
+    }
+
+    if (!(basicSalaryPct >= 0.2 && basicSalaryPct <= 0.8)) {
+      prompts.push({
+        id: 'basicSalaryPct',
+        title: 'Set basic salary ratio',
+        description: 'Basic salary ratio should be between 0.2 and 0.8 for better NPS cap estimates.',
+      });
+    }
+
+    if (hasEmployerNPS && employerNPSAmount <= 0) {
+      prompts.push({
+        id: 'employerNPSAmount',
+        title: 'Add employer NPS amount',
+        description: 'Employer NPS amount helps estimate 80CCD(2) headroom accurately.',
+      });
+    }
+
+    if (homeLoanInterest <= 0 && !completeness.homeLoanReviewed) {
+      prompts.push({
+        id: 'homeLoanInterest',
+        title: 'Confirm home loan interest',
+        description: 'Confirm annual home loan interest, or mark that no home loan is active.',
+      });
+    }
+
+    if (hraReceived <= 0 && rentPaid <= 0 && !completeness.hraRentReviewed) {
+      prompts.push({
+        id: 'hraRent',
+        title: 'Confirm HRA and rent details',
+        description: 'HRA and rent values influence old-regime comparison and scenario quality.',
+      });
+    }
+
+    return prompts;
+  }, [
+    completeness.homeLoanReviewed,
+    completeness.hraRentReviewed,
+    formData?.monthlyIncome,
+    formData?.basicSalaryPct,
+    formData?.hasOptedForEmployerNPS,
+    formData?.employerNPSAmount,
+    formData?.homeLoanInterest,
+    formData?.houseRentAllowance_HRA,
+    formData?.actualRentPaid,
+  ]);
   const oldRegimeSavings = Math.max(0, (result.new?.totalTax || 0) - (result.old?.totalTax || 0));
   const showOldRegimeRecommendation = !isNewRegimeUser && oldRegimeSavings > 2000;
   const oldExclusiveDeductionLabels = ['Section 80C', 'Health Insurance 80D', 'HRA Exemption', 'Home Loan Interest 24b', 'LTA'];
@@ -532,6 +631,262 @@ function TaxShieldContent() {
               <p className="text-[10px] font-bold text-[#1E293B]/60 uppercase tracking-widest">
                 You can switch regimes annually at the time of ITR filing.
               </p>
+            </div>
+          )}
+
+          {isNewRegimeUser && (
+            <div className="bg-white border-2 border-[#1E293B] rounded-[24px] pop-shadow p-5 sm:p-6 space-y-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full border-2 border-[#1E293B] bg-[#34D399]/15 flex items-center justify-center shadow-[2px_2px_0_0_#1E293B]">
+                    <Flame size={18} className="text-[#34D399]" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h3 className="font-heading font-extrabold text-[#1E293B] uppercase tracking-widest">Optimize Your Tax</h3>
+                    <p className="text-[10px] font-bold text-[#1E293B]/40 uppercase tracking-widest">Actionable nudges for New Regime users</p>
+                  </div>
+                </div>
+                <Badge color="violet">New Regime</Badge>
+              </div>
+
+              {missingPrompts.length > 0 && (
+                <div className="bg-[#FEF3C7] border-2 border-[#1E293B] rounded-xl p-4 space-y-3">
+                  <p className="text-[10px] font-black text-[#1E293B] uppercase tracking-widest">
+                    Improve estimate accuracy by filling these quick details
+                  </p>
+                  <p className="text-[10px] font-bold text-[#1E293B]/70 uppercase tracking-widest">
+                    Current savings are directional estimates until these fields are confirmed.
+                  </p>
+
+                  <div className="space-y-2">
+                    {missingPrompts.map((prompt) => (
+                      <div key={prompt.id} className="bg-white border-2 border-[#1E293B]/20 rounded-xl p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-black text-[#1E293B] uppercase tracking-widest">{prompt.title}</p>
+                            <p className="text-[10px] font-bold text-[#1E293B]/60 uppercase tracking-widest mt-1">{prompt.description}</p>
+                          </div>
+                          <button
+                            onClick={() => setExpandedPromptId(expandedPromptId === prompt.id ? null : prompt.id)}
+                            className="px-3 py-2 text-[9px] font-black uppercase tracking-widest border-2 border-[#1E293B] rounded-full bg-[#8B5CF6] text-white cursor-pointer"
+                          >
+                            {expandedPromptId === prompt.id ? 'Hide' : 'Fill Now'}
+                          </button>
+                        </div>
+
+                        {expandedPromptId === prompt.id && (
+                          <div className="mt-3 pt-3 border-t-2 border-[#1E293B]/10 space-y-3">
+                            {prompt.id === 'income' && (
+                              <div className="space-y-3">
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-[#1E293B]/50">Monthly Income (₹)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={formData.monthlyIncome ?? ''}
+                                  onChange={(e) => handleChange('monthlyIncome', Math.max(0, toSafeNumber(e.target.value)))}
+                                  className="w-full bg-slate-50 border-2 border-[#1E293B] rounded-full px-5 py-3 font-bold text-sm outline-none focus:border-[#8B5CF6] transition-colors"
+                                />
+                                <button
+                                  onClick={() => persistUserData({ monthlyIncome: Math.max(0, toSafeNumber(formData.monthlyIncome)) })}
+                                  disabled={isSaving}
+                                  className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-[#1E293B] rounded-full bg-[#34D399] text-[#1E293B] cursor-pointer disabled:opacity-60"
+                                >
+                                  Save Income
+                                </button>
+                              </div>
+                            )}
+
+                            {prompt.id === 'basicSalaryPct' && (
+                              <div className="space-y-3">
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-[#1E293B]/50">Basic Salary Ratio (0.2 to 0.8)</label>
+                                <input
+                                  type="number"
+                                  min="0.2"
+                                  max="0.8"
+                                  step="0.01"
+                                  value={formData.basicSalaryPct ?? ''}
+                                  onChange={(e) => handleChange('basicSalaryPct', toSafeNumber(e.target.value))}
+                                  className="w-full bg-slate-50 border-2 border-[#1E293B] rounded-full px-5 py-3 font-bold text-sm outline-none focus:border-[#8B5CF6] transition-colors"
+                                />
+                                <button
+                                  onClick={() => persistUserData({ basicSalaryPct: Math.max(0.2, Math.min(0.8, toSafeNumber(formData.basicSalaryPct) || 0.4)) })}
+                                  disabled={isSaving}
+                                  className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-[#1E293B] rounded-full bg-[#34D399] text-[#1E293B] cursor-pointer disabled:opacity-60"
+                                >
+                                  Save Basic Ratio
+                                </button>
+                              </div>
+                            )}
+
+                            {prompt.id === 'employerNPSAmount' && (
+                              <div className="space-y-3">
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-[#1E293B]/50">Employer NPS (Monthly ₹)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={formData.employerNPSAmount ?? ''}
+                                  onChange={(e) => handleChange('employerNPSAmount', Math.max(0, toSafeNumber(e.target.value)))}
+                                  className="w-full bg-slate-50 border-2 border-[#1E293B] rounded-full px-5 py-3 font-bold text-sm outline-none focus:border-[#8B5CF6] transition-colors"
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    onClick={() => persistUserData({
+                                      hasOptedForEmployerNPS: true,
+                                      employerNPSAmount: Math.max(0, toSafeNumber(formData.employerNPSAmount)),
+                                    })}
+                                    disabled={isSaving}
+                                    className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-[#1E293B] rounded-full bg-[#34D399] text-[#1E293B] cursor-pointer disabled:opacity-60"
+                                  >
+                                    Save Employer NPS
+                                  </button>
+                                  <button
+                                    onClick={() => persistUserData({ hasOptedForEmployerNPS: false, employerNPSAmount: 0 })}
+                                    disabled={isSaving}
+                                    className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-[#1E293B] rounded-full bg-white text-[#1E293B] cursor-pointer disabled:opacity-60"
+                                  >
+                                    No Employer NPS
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {prompt.id === 'homeLoanInterest' && (
+                              <div className="space-y-3">
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-[#1E293B]/50">Home Loan Interest (Annual ₹)</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={formData.homeLoanInterest ?? ''}
+                                  onChange={(e) => handleChange('homeLoanInterest', Math.max(0, toSafeNumber(e.target.value)))}
+                                  className="w-full bg-slate-50 border-2 border-[#1E293B] rounded-full px-5 py-3 font-bold text-sm outline-none focus:border-[#8B5CF6] transition-colors"
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    onClick={() => markSectionReviewed('homeLoanReviewed', { homeLoanInterest: Math.max(0, toSafeNumber(formData.homeLoanInterest)) })}
+                                    disabled={isSaving}
+                                    className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-[#1E293B] rounded-full bg-[#34D399] text-[#1E293B] cursor-pointer disabled:opacity-60"
+                                  >
+                                    Save Home Loan
+                                  </button>
+                                  <button
+                                    onClick={() => markSectionReviewed('homeLoanReviewed', { homeLoanInterest: 0 })}
+                                    disabled={isSaving}
+                                    className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-[#1E293B] rounded-full bg-white text-[#1E293B] cursor-pointer disabled:opacity-60"
+                                  >
+                                    I Have No Home Loan
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {prompt.id === 'hraRent' && (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div className="space-y-1.5">
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#1E293B]/50">HRA Received (Annual ₹)</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={formData.houseRentAllowance_HRA ?? ''}
+                                      onChange={(e) => handleChange('houseRentAllowance_HRA', Math.max(0, toSafeNumber(e.target.value)))}
+                                      className="w-full bg-slate-50 border-2 border-[#1E293B] rounded-full px-5 py-3 font-bold text-sm outline-none focus:border-[#8B5CF6] transition-colors"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#1E293B]/50">Rent Paid (Annual ₹)</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={formData.actualRentPaid ?? ''}
+                                      onChange={(e) => handleChange('actualRentPaid', Math.max(0, toSafeNumber(e.target.value)))}
+                                      className="w-full bg-slate-50 border-2 border-[#1E293B] rounded-full px-5 py-3 font-bold text-sm outline-none focus:border-[#8B5CF6] transition-colors"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    onClick={() => markSectionReviewed('hraRentReviewed', {
+                                      houseRentAllowance_HRA: Math.max(0, toSafeNumber(formData.houseRentAllowance_HRA)),
+                                      actualRentPaid: Math.max(0, toSafeNumber(formData.actualRentPaid)),
+                                    })}
+                                    disabled={isSaving}
+                                    className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-[#1E293B] rounded-full bg-[#34D399] text-[#1E293B] cursor-pointer disabled:opacity-60"
+                                  >
+                                    Save HRA and Rent
+                                  </button>
+                                  <button
+                                    onClick={() => markSectionReviewed('hraRentReviewed', {
+                                      houseRentAllowance_HRA: 0,
+                                      actualRentPaid: 0,
+                                    })}
+                                    disabled={isSaving}
+                                    className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-[#1E293B] rounded-full bg-white text-[#1E293B] cursor-pointer disabled:opacity-60"
+                                  >
+                                    Not Applicable
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {topOptimization ? (
+                <div className="space-y-4">
+                  <div className="bg-[#D1FAE5] border-2 border-[#1E293B] rounded-xl p-5 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Flame size={16} className="text-[#059669]" strokeWidth={2.5} />
+                      <p className="text-[10px] font-black text-[#1E293B] uppercase tracking-widest">Top Nudge</p>
+                    </div>
+                    <p className="font-heading font-extrabold text-lg text-[#1E293B]">{topOptimization.title}</p>
+                    <p className="text-[10px] font-bold text-[#1E293B]/70 uppercase tracking-widest">{topOptimization.description}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="bg-white border-2 border-[#1E293B]/15 rounded-xl p-3">
+                        <p className="text-[9px] font-black text-[#1E293B]/40 uppercase tracking-widest">Potential Tax Saved</p>
+                        <p className="font-heading font-extrabold text-xl text-[#059669]">{inr(topOptimization.annualTaxSaved)}</p>
+                      </div>
+                      <div className="bg-white border-2 border-[#1E293B]/15 rounded-xl p-3">
+                        <p className="text-[9px] font-black text-[#1E293B]/40 uppercase tracking-widest">Monthly Action</p>
+                        <p className="font-heading font-extrabold text-xl text-[#1E293B]">{inr(topOptimization.monthlyCost || 0)}</p>
+                      </div>
+                      <div className="bg-white border-2 border-[#1E293B]/15 rounded-xl p-3">
+                        <p className="text-[9px] font-black text-[#1E293B]/40 uppercase tracking-widest">Net Annual Benefit</p>
+                        <p className="font-heading font-extrabold text-xl text-[#8B5CF6]">{inr(topOptimization.netAnnualBenefit)}</p>
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-bold text-[#1E293B]/70 uppercase tracking-widest">
+                      <strong className="text-[#1E293B]">Action:</strong> {topOptimization.actionLabel}
+                    </p>
+                  </div>
+
+                  {secondaryOptimizations.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black text-[#1E293B]/50 uppercase tracking-widest">Other ranked opportunities</p>
+                      {secondaryOptimizations.map((item, idx) => (
+                        <div key={item.id} className="bg-[#FFFDF5] border-2 border-[#1E293B]/15 rounded-xl p-4 flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-black text-[#1E293B] uppercase tracking-widest">#{idx + 2} {item.title}</p>
+                            <p className="text-[10px] font-bold text-[#1E293B]/60 uppercase tracking-widest mt-1">{item.actionLabel}</p>
+                          </div>
+                          <p className="font-heading font-extrabold text-lg text-[#059669] whitespace-nowrap">{inr(item.annualTaxSaved)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-[#D1FAE5] border-2 border-[#1E293B] rounded-xl p-5 text-center">
+                  <CheckCircle2 size={22} className="mx-auto text-[#059669]" strokeWidth={2.5} />
+                  <p className="font-heading font-extrabold text-lg text-[#1E293B] mt-2">You are already well optimized</p>
+                  <p className="text-[10px] font-bold text-[#1E293B]/60 uppercase tracking-widest mt-1">
+                    No additional high-confidence tax opportunities detected right now.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

@@ -268,6 +268,7 @@ export default function Onboarding() {
     stocksEtfMonthlyContribution: '',
     fdRdMonthlyContribution: '',
     otherSchemeMonthlyContribution: '',
+    employerNPSAmount: '',
   });
 
   const includesNps = formData.retirementMode === RETIREMENT_MODES.NPS_ONLY || formData.retirementMode === RETIREMENT_MODES.HYBRID;
@@ -527,6 +528,9 @@ export default function Onboarding() {
       isGovtEmployee: Boolean(formData.isGovtEmployee),
       basicSalaryPct: Math.max(0.2, Math.min(0.8, Number(formData.basicSalaryPct) || 0.4)),
       hasOptedForEmployerNPS: Boolean(formData.hasOptedForEmployerNPS),
+      employerNPSAmount: Boolean(formData.hasOptedForEmployerNPS)
+        ? Math.max(0, parseNumericInput(formData.employerNPSAmount) || 0)
+        : 0,
     };
   }, [formData]);
 
@@ -967,12 +971,12 @@ export default function Onboarding() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setFormData({ ...formData, hasOptedForEmployerNPS: false })} className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs ${!formData.hasOptedForEmployerNPS ? 'bg-[#1E293B] text-white shadow-[3px_3px_0_0_#FBBF24]' : 'bg-white text-[#1E293B]'}`}>No Employer NPS</button>
+                    <button onClick={() => setFormData({ ...formData, hasOptedForEmployerNPS: false, employerNPSAmount: '' })} className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs ${!formData.hasOptedForEmployerNPS ? 'bg-[#1E293B] text-white shadow-[3px_3px_0_0_#FBBF24]' : 'bg-white text-[#1E293B]'}`}>No Employer NPS</button>
                     <button onClick={() => setFormData({ ...formData, hasOptedForEmployerNPS: true })} className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs ${formData.hasOptedForEmployerNPS ? 'bg-[#1E293B] text-white shadow-[3px_3px_0_0_#FBBF24]' : 'bg-white text-[#1E293B]'}`}>Employer NPS Enabled</button>
                   </div>
 
                   {formData.hasOptedForEmployerNPS && (
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-black uppercase tracking-widest text-[#1E293B]/60">Basic Salary % of CTC</label>
                         <span className="font-black text-[#8B5CF6]">{Math.round((Number(formData.basicSalaryPct) || 0.4) * 100)}%</span>
@@ -985,6 +989,17 @@ export default function Onboarding() {
                         value={Math.round((Number(formData.basicSalaryPct) || 0.4) * 100)}
                         onChange={(e) => setFormData({ ...formData, basicSalaryPct: Number(e.target.value) / 100 })}
                         className="w-full h-2 bg-[#E2E8F0] border border-[#1E293B]/30 rounded-lg appearance-none cursor-pointer accent-[#8B5CF6]"
+                      />
+
+                      <InputField
+                        label="Employer NPS Amount (Monthly ₹)"
+                        type="number"
+                        name="employerNPSAmount"
+                        value={formData.employerNPSAmount}
+                        onChange={handleChange}
+                        placeholder="3,000"
+                        helper="Enter current monthly employer contribution, if available."
+                        autoFormatIndian
                       />
                     </div>
                   )}
