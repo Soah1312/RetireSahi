@@ -316,7 +316,6 @@ function InputPanel({ values, onChange }) {
 
 const TABS = [
   { id: 'overview',    label: 'Overview',      Icon: ShieldCheck   },
-  { id: 'comparison',  label: 'Regime Compare', Icon: BarChart3    },
   { id: 'whatif',      label: 'What-If',        Icon: Zap          },
   { id: 'inputs',      label: 'Edit Inputs',   Icon: RefreshCw     },
 ];
@@ -419,9 +418,15 @@ function TaxShieldContent() {
     }
   };
 
-  const saving      = result.annualTaxSaving;
-  const recommended = result.recommendedRegime;
-  const chosen      = result[recommended === 'OLD' ? 'old' : 'new'];
+  const activeTaxRegime = String(formData?.taxRegime || userData?.taxRegime || 'new').toLowerCase() === 'old' ? 'old' : 'new';
+  const isNewRegimeUser = activeTaxRegime === 'new';
+  const currentTaxSummary = isNewRegimeUser ? result.new : result.old;
+  const oldRegimeSavings = Math.max(0, (result.new?.totalTax || 0) - (result.old?.totalTax || 0));
+  const showOldRegimeRecommendation = !isNewRegimeUser && oldRegimeSavings > 2000;
+  const oldExclusiveDeductionLabels = ['Section 80C', 'Health Insurance 80D', 'HRA Exemption', 'Home Loan Interest 24b', 'LTA'];
+  const oldExclusiveDeductions = (result.deductionBreakdown || []).filter(
+    (item) => oldExclusiveDeductionLabels.includes(item.label) && (Number(item.old) || 0) > 0
+  );
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
   return (
@@ -439,40 +444,6 @@ function TaxShieldContent() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            {
-              label: 'You Can Save',
-              value: inr(saving),
-              sub: 'vs current regime',
-              color: saving > 0 ? COLORS.emerald : '#EF4444',
-            },
-            {
-              label: 'Best Regime',
-              value: recommended === 'OLD' ? 'Old Regime' : 'New Regime',
-              sub: 'recommended for you',
-              color: COLORS.violet,
-            },
-            {
-              label: 'Effective Tax Rate',
-              value: pct(chosen.effectiveRate),
-              sub: 'on gross income',
-              color: COLORS.amber,
-            },
-            {
-              label: 'Tax Leakages',
-              value: String(result.leakages.length),
-              sub: 'opportunities found',
-              color: result.leakages.length > 0 ? COLORS.pink : COLORS.emerald,
-            },
-          ].map(({ label, value, sub, color }) => (
-            <div key={label} className="bg-white border-2 border-[#1E293B] rounded-[16px] p-4 pop-shadow hover:-translate-y-1 transition-all group">
-              <p className="text-[9px] font-black uppercase tracking-widest text-[#1E293B]/40 mb-2">{label}</p>
-              <p className="font-heading font-extrabold text-lg sm:text-xl" style={{ color }}>{value}</p>
-              <p className="text-[9px] font-bold text-[#1E293B]/40 uppercase tracking-widest mt-1">{sub}</p>
-            </div>
-          ))}
-        </div>
       </section>
 
       {/* ── TAB NAV ──────────────────────────────────────────────────────────── */}
@@ -498,60 +469,71 @@ function TaxShieldContent() {
       {/* ═══ OVERVIEW ════════════════════════════════════════════════════════ */}
       {tab === 'overview' && (
         <div className="space-y-8">
-          {/* Top stat cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6">
-            <StatCard
-              icon={IndianRupee}
-              label="Annual Tax (Best)"
-              value={inr(chosen.totalTax)}
-              sub="incl. cess & surcharge"
-              accent="#EF4444"
-            />
-            <StatCard
-              icon={TrendingDown}
-              label="Tax You Can Save"
-              value={inr(saving)}
-              sub={`${inr(result.monthlySaving)}/month`}
-              accent={COLORS.emerald}
-            />
-            <StatCard
-              icon={Target}
-              label="NPS Tax Benefit"
-              value={inr(result.nps.taxBenefit)}
-              sub="via 80CCD(1B)"
-              accent={COLORS.violet}
-            />
-            <StatCard
-              icon={BarChart3}
-              label="Total Deductions"
-              value={inr(chosen.totalDeductions)}
-              sub={`${recommended} regime`}
-              accent={COLORS.amber}
-            />
+          <div className="bg-white border-2 border-[#1E293B] rounded-[24px] pop-shadow p-5 sm:p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full border-2 border-[#1E293B] bg-[#8B5CF6]/20 flex items-center justify-center shadow-[2px_2px_0_0_#1E293B]">
+                <IndianRupee size={18} className="text-[#8B5CF6]" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h3 className="font-heading font-extrabold text-[#1E293B] uppercase tracking-widest">Your Tax Summary</h3>
+                <p className="text-[10px] font-bold text-[#1E293B]/40 uppercase tracking-widest">
+                  {isNewRegimeUser ? 'New Regime' : 'Old Regime'} snapshot based on your current profile
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-[#FFFDF5] border-2 border-[#1E293B]/10 rounded-xl p-4">
+                <p className="text-[9px] font-black text-[#1E293B]/40 uppercase tracking-widest mb-1">Current Tax Liability</p>
+                <p className="font-heading font-extrabold text-2xl text-[#EF4444]">{inr(currentTaxSummary.totalTax)}</p>
+              </div>
+              <div className="bg-[#FFFDF5] border-2 border-[#1E293B]/10 rounded-xl p-4">
+                <p className="text-[9px] font-black text-[#1E293B]/40 uppercase tracking-widest mb-1">Effective Tax Rate</p>
+                <p className="font-heading font-extrabold text-2xl text-[#1E293B]">{pct(currentTaxSummary.effectiveRate)}</p>
+              </div>
+              <div className="bg-[#FFFDF5] border-2 border-[#1E293B]/10 rounded-xl p-4">
+                <p className="text-[9px] font-black text-[#1E293B]/40 uppercase tracking-widest mb-1">Monthly Take-Home</p>
+                <p className="font-heading font-extrabold text-2xl text-[#34D399]">{inr((currentTaxSummary.takeHome || 0) / 12)}</p>
+              </div>
+            </div>
+
+            {isNewRegimeUser && (
+              <div className="bg-[#D1FAE5] border-2 border-[#1E293B] rounded-xl p-4 text-[10px] font-bold text-[#065F46] uppercase tracking-widest">
+                Standard deduction of <strong className="text-[#1E293B]">₹75,000</strong> is applied in this summary.
+              </div>
+            )}
           </div>
 
-          {/* Recommended regime banner */}
-          <div
-            className={`bg-white border-2 border-[#1E293B] rounded-[20px] p-6 pop-shadow flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4`}
-          >
-            <div className="w-12 h-12 rounded-full border-2 border-[#1E293B] flex items-center justify-center shadow-[2px_2px_0_0_#1E293B]"
-              style={{ backgroundColor: `${recommended === 'OLD' ? COLORS.violet : COLORS.emerald}22` }}
-            >
-              <CheckCircle2 size={24} strokeWidth={2.5} style={{ color: recommended === 'OLD' ? COLORS.violet : COLORS.emerald }} />
-            </div>
-            <div className="flex-1">
-              <p className="font-heading font-extrabold text-[#1E293B] text-lg">
-                {recommended === 'OLD' ? 'Old Regime' : 'New Regime'} is better for you
+          {showOldRegimeRecommendation && (
+            <div className="bg-[#FEF3C7] border-2 border-[#1E293B] rounded-[20px] p-6 pop-shadow space-y-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle size={20} className="text-[#B45309] mt-0.5" strokeWidth={2.5} />
+                <div>
+                  <p className="font-heading font-extrabold text-[#1E293B] text-lg">You might be better off in the Old Regime</p>
+                  <p className="text-[10px] font-bold text-[#1E293B]/70 uppercase tracking-widest mt-1">
+                    Based on your profile, Old Regime could save you <strong className="text-[#1E293B]">{inr(oldRegimeSavings)}</strong> this year.
+                  </p>
+                </div>
+              </div>
+
+              {oldExclusiveDeductions.length > 0 && (
+                <div className="bg-white border-2 border-[#1E293B]/20 rounded-xl p-4 space-y-2">
+                  <p className="text-[10px] font-black text-[#1E293B]/50 uppercase tracking-widest">Why Old Regime looks better</p>
+                  <ul className="space-y-1.5">
+                    {oldExclusiveDeductions.map((item) => (
+                      <li key={item.label} className="text-[11px] font-bold text-[#1E293B]">
+                        {`${inr(item.old)} from ${item.label}`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <p className="text-[10px] font-bold text-[#1E293B]/60 uppercase tracking-widest">
+                You can switch regimes annually at the time of ITR filing.
               </p>
-              <p className="text-[10px] font-bold text-[#1E293B]/50 uppercase tracking-widest mt-1">
-                You save <strong className="text-[#1E293B]">{inr(saving)}</strong> more per year
-                {saving > 0 && ` — that's ${inr(result.monthlySaving)}/month back in your pocket.`}
-              </p>
             </div>
-            <Badge color={recommended === 'OLD' ? 'violet' : 'emerald'}>
-              {recommended === 'OLD' ? 'Old Regime' : 'New Regime'}
-            </Badge>
-          </div>
+          )}
 
           {/* NPS breakdown */}
           <div className="bg-white border-2 border-[#1E293B] rounded-[24px] pop-shadow p-5 sm:p-6 relative overflow-hidden">
@@ -589,49 +571,6 @@ function TaxShieldContent() {
 
         </div>
       )}
-
-      {/* ═══ REGIME COMPARISON ═══════════════════════════════════════════════ */}
-      {tab === 'comparison' && (
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <RegimeCard label="Old Regime" data={result.old} recommended={recommended} />
-            <RegimeCard label="New Regime" data={result.new} recommended={recommended} />
-          </div>
-
-          {/* Deduction breakdown */}
-          <div className="bg-white border-2 border-[#1E293B] rounded-[24px] pop-shadow p-5 sm:p-6 relative overflow-hidden">
-            <div className="w-1.5 absolute left-0 top-0 h-full bg-[#F472B6]" />
-            <div className="flex items-center justify-between mb-6 ml-2">
-              <h3 className="font-heading font-extrabold text-[#1E293B] uppercase tracking-widest">Deduction Breakdown</h3>
-              <div className="flex items-center gap-4 text-[9px] font-black text-[#1E293B]/40 uppercase tracking-widest">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: COLORS.violet }} /> Old</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: COLORS.pink }} /> New</span>
-              </div>
-            </div>
-            <div className="space-y-5">
-              {result.deductionBreakdown.map(d => (
-                <DeductionBar key={d.label} label={d.label} oldVal={d.old} newVal={d.new} />
-              ))}
-            </div>
-          </div>
-
-          {/* Feature Comparison Table */}
-          <RegimeFeaturesTable />
-
-          {/* Verdict */}
-          <div className="bg-[#34D399] border-2 border-[#1E293B] rounded-[20px] p-6 pop-shadow text-[#1E293B]">
-            <p className="text-[10px] font-black uppercase tracking-widest text-[#065F46] mb-2">Verdict</p>
-            <p className="font-heading font-extrabold text-xl sm:text-2xl mb-2">
-              {recommended === 'OLD' ? 'Old Regime' : 'New Regime'} saves you {inr(saving)}/year
-            </p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#065F46]">
-              Old regime total tax: <strong className="text-[#1E293B]">{inr(result.old.totalTax)}</strong> ·
-              New regime total tax: <strong className="text-[#1E293B]">{inr(result.new.totalTax)}</strong>
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* ═══ WHAT-IF ═════════════════════════════════════════════════════════ */}
       {tab === 'whatif' && (
         <div className="space-y-6">
