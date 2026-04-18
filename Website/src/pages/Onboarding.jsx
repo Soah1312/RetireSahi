@@ -207,45 +207,6 @@ const InputField = ({ label, type, name, value, onChange, suffix, placeholder, h
   );
 };
 
-const TaxProfileField = ({ label, name, value, max, step = 5000, onNumberChange, onSliderChange }) => (
-  <div className="space-y-3">
-    <div className="flex items-center justify-between gap-3">
-      <label className="block text-xs font-black uppercase tracking-widest text-[#1E293B]/70">{label}</label>
-      <span className="text-xs font-black text-[#8B5CF6]">₹{Math.round(Number(value) || 0).toLocaleString('en-IN')}</span>
-    </div>
-    <input
-      type="range"
-      min="0"
-      max={max}
-      step={step}
-      name={name}
-      value={Math.max(0, Math.min(max, Number(value) || 0))}
-      onChange={onSliderChange}
-      className="w-full h-2 bg-[#E2E8F0] border border-[#1E293B]/30 rounded-lg appearance-none cursor-pointer accent-[#8B5CF6]"
-    />
-    <div className="relative">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-[#1E293B]/50">₹</span>
-      <input
-        type="text"
-        name={name}
-        value={formatIndianNumberInput(value)}
-        min="0"
-        max={max}
-        inputMode="decimal"
-        onChange={(e) => {
-          onNumberChange({
-            target: {
-              name,
-              value: sanitizeNumericInput(e.target.value),
-            },
-          });
-        }}
-        className="w-full border-2 border-[#1E293B] rounded-xl p-2.5 pl-8 text-sm font-bold bg-white focus:outline-none focus:shadow-[3px_3px_0_0_#8B5CF6]"
-      />
-    </div>
-  </div>
-);
-
 export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0); 
@@ -297,19 +258,6 @@ export default function Onboarding() {
       return;
     }
 
-    clearErrorsForFields([name]);
-  };
-
-  const handleTaxNumberChange = (e) => {
-    const { name, value } = e.target;
-    const parsed = parseCurrencyInput(value);
-    setFormData((prev) => ({ ...prev, [name]: parsed }));
-    clearErrorsForFields([name]);
-  };
-
-  const handleTaxSliderChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: parseCurrencyInput(value) }));
     clearErrorsForFields([name]);
   };
 
@@ -686,7 +634,7 @@ export default function Onboarding() {
         </div>
       )}
 
-      {step >= 1 && step <= 8 && (
+      {step >= 1 && step <= 7 && (
         <div className="z-10 w-full max-w-lg bg-white border-2 border-[#1E293B] rounded-3xl p-4 sm:p-6 md:p-8 pop-shadow animate-slide-up flex flex-col relative overflow-hidden h-auto min-h-[420px] sm:min-h-[450px] max-h-[calc(100dvh-1rem)] sm:max-h-[90vh]">
           <div className="w-full mb-6 shrink-0 relative">
              <div className="flex justify-between items-center mb-3">
@@ -695,14 +643,14 @@ export default function Onboarding() {
                    <ArrowLeft className="w-5 h-5" />
                  </button>
                ) : <div className="w-9 h-9" />}
-               <span className="font-bold uppercase tracking-widest text-[#1E293B]/40 text-xs">Step {step} of 8</span>
+               <span className="font-bold uppercase tracking-widest text-[#1E293B]/40 text-xs">Step {step} of 7</span>
                <div className="w-9 h-9" />
              </div>
              
              <div className="w-full h-2 border-2 border-[#1E293B] rounded-full bg-[#F1F5F9] overflow-hidden">
                <div 
                  className="h-full bg-[#8B5CF6]"
-                 style={{ width: `${(step / 8) * 100}%`, transition: 'width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+                 style={{ width: `${(step / 7) * 100}%`, transition: 'width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
                />
              </div>
           </div>
@@ -968,71 +916,6 @@ export default function Onboarding() {
             )}
 
             {step === 7 && (
-              <div className="animate-fade-in space-y-5">
-                <h2 className="font-heading font-extrabold text-2xl md:text-3xl leading-tight text-center">Tax Profile</h2>
-                <p className="text-center text-xs font-bold uppercase tracking-widest text-[#1E293B]/50">Capture deductions, exemptions and employment context</p>
-
-                <div className="bg-[#FFFDF5] border-2 border-[#1E293B] rounded-2xl p-4 space-y-4">
-                  <p className="font-black text-xs uppercase tracking-widest text-[#1E293B]/60">Old Regime Deductions</p>
-                  <TaxProfileField label="Home Loan Interest" name="homeLoanInterest" value={formData.homeLoanInterest} max={2000000} onNumberChange={handleTaxNumberChange} onSliderChange={handleTaxSliderChange} />
-                  <TaxProfileField label="Life Insurance (80C)" name="lifeInsurance_80C" value={formData.lifeInsurance_80C} max={300000} onNumberChange={handleTaxNumberChange} onSliderChange={handleTaxSliderChange} />
-                  <TaxProfileField label="ELSS / PPF (80C)" name="elss_ppf_80C" value={formData.elss_ppf_80C} max={300000} onNumberChange={handleTaxNumberChange} onSliderChange={handleTaxSliderChange} />
-                  <TaxProfileField label="Medical Insurance (80D)" name="medicalInsurance_80D" value={formData.medicalInsurance_80D} max={200000} onNumberChange={handleTaxNumberChange} onSliderChange={handleTaxSliderChange} />
-                  <TaxProfileField label="Education Loan Interest (80E)" name="educationLoanInterest_80E" value={formData.educationLoanInterest_80E} max={1000000} onNumberChange={handleTaxNumberChange} onSliderChange={handleTaxSliderChange} />
-                </div>
-
-                <div className="bg-white border-2 border-[#1E293B] rounded-2xl p-4 space-y-4">
-                  <p className="font-black text-xs uppercase tracking-widest text-[#1E293B]/60">Exemptions</p>
-                  <TaxProfileField label="House Rent Allowance (HRA)" name="houseRentAllowance_HRA" value={formData.houseRentAllowance_HRA} max={1200000} onNumberChange={handleTaxNumberChange} onSliderChange={handleTaxSliderChange} />
-                  <TaxProfileField label="Actual Rent Paid" name="actualRentPaid" value={formData.actualRentPaid} max={1200000} onNumberChange={handleTaxNumberChange} onSliderChange={handleTaxSliderChange} />
-                  <TaxProfileField label="Leave Travel Allowance (LTA)" name="leaveTravelAllowance_LTA" value={formData.leaveTravelAllowance_LTA} max={300000} onNumberChange={handleTaxNumberChange} onSliderChange={handleTaxSliderChange} />
-                </div>
-
-                <div className="bg-white border-2 border-[#1E293B] rounded-2xl p-4 space-y-4">
-                  <p className="font-black text-xs uppercase tracking-widest text-[#1E293B]/60">Employment Context</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setFormData({ ...formData, isGovtEmployee: false })} className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs ${!formData.isGovtEmployee ? 'bg-[#34D399] text-[#1E293B] shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}>Private</button>
-                    <button onClick={() => setFormData({ ...formData, isGovtEmployee: true })} className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs ${formData.isGovtEmployee ? 'bg-[#34D399] text-[#1E293B] shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}>Government</button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setFormData({ ...formData, hasOptedForEmployerNPS: false, employerNPSAmount: '' })} className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs ${!formData.hasOptedForEmployerNPS ? 'bg-[#1E293B] text-white shadow-[3px_3px_0_0_#FBBF24]' : 'bg-white text-[#1E293B]'}`}>No Employer NPS</button>
-                    <button onClick={() => setFormData({ ...formData, hasOptedForEmployerNPS: true })} className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs ${formData.hasOptedForEmployerNPS ? 'bg-[#1E293B] text-white shadow-[3px_3px_0_0_#FBBF24]' : 'bg-white text-[#1E293B]'}`}>Employer NPS Enabled</button>
-                  </div>
-
-                  {formData.hasOptedForEmployerNPS && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-black uppercase tracking-widest text-[#1E293B]/60">Basic Salary % of CTC</label>
-                        <span className="font-black text-[#8B5CF6]">{Math.round((Number(formData.basicSalaryPct) || 0.4) * 100)}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="20"
-                        max="80"
-                        step="1"
-                        value={Math.round((Number(formData.basicSalaryPct) || 0.4) * 100)}
-                        onChange={(e) => setFormData({ ...formData, basicSalaryPct: Number(e.target.value) / 100 })}
-                        className="w-full h-2 bg-[#E2E8F0] border border-[#1E293B]/30 rounded-lg appearance-none cursor-pointer accent-[#8B5CF6]"
-                      />
-
-                      <InputField
-                        label="Employer NPS Amount (Monthly ₹)"
-                        type="number"
-                        name="employerNPSAmount"
-                        value={formData.employerNPSAmount}
-                        onChange={handleChange}
-                        placeholder="3,000"
-                        helper="Enter current monthly employer contribution, if available."
-                        autoFormatIndian
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {step === 8 && (
               <div className="animate-fade-in space-y-6 pt-2 text-center">
                  <h2 className="font-heading font-extrabold text-2xl md:text-3xl leading-tight">Lock your retirement input details</h2>
                  <p className="font-bold text-[#1E293B]/60 uppercase tracking-widest text-sm">Add realistic values now, then fine-tune later in Settings</p>
@@ -1123,7 +1006,7 @@ export default function Onboarding() {
 
           <div className="pt-4 border-t-2 border-[#1E293B]/10 shrink-0 mt-auto bg-white sticky bottom-0 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
              <button 
-               onClick={step === 8 ? handleSubmit : handleNext}
+               onClick={step === 7 ? handleSubmit : handleNext}
                 disabled={
                   (step === 1 && (!formData.firstName || !formData.age)) ||
                   (step === 2 && !formData.workContext) ||
@@ -1135,11 +1018,11 @@ export default function Onboarding() {
                         && parseNumericInput(formData.customRetirementMonthlyAmount) <= MAX_CUSTOM_RETIREMENT_GOAL)
                       : !formData.lifestyle)
                   )) ||
-                  (step === 8 && includesOtherSchemes && selectedSchemeConfigs.length === 0)
+                  (step === 7 && includesOtherSchemes && selectedSchemeConfigs.length === 0)
                 }
                 className="candy-btn touch-target w-full py-4 text-base md:text-lg font-black uppercase tracking-widest pop-shadow flex justify-center items-center gap-3 cursor-pointer"
              >
-                {step === 8 ? 'See My Score' : 'Continue'}
+                {step === 7 ? 'See My Score' : 'Continue'}
                 <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
                   <ArrowRight className="text-[#8B5CF6] w-3.5 h-3.5" strokeWidth={4} />
                 </div>
@@ -1196,10 +1079,16 @@ export default function Onboarding() {
                    <Zap className="w-4 h-4 md:w-5 md:h-5" /> Your Biggest Lever
                  </div>
                  <div className="font-bold text-base md:text-lg leading-snug">
-                   {results.monthlyGap > 0 ? (
-                     <>Increase your monthly contribution by <span className="text-[#8B5CF6] font-black">{formatCurrency(results.monthlyGap)}</span> to cover the gap entirely.</>
+                   {results.isRetirementGoalOnTrack ? (
+                     <><span className="text-[#34D399] font-black">You are fully on track!</span> Your projected pension is aligned with your retirement goal.</>
                    ) : (
-                     <><span className="text-[#34D399] font-black">You are fully on track!</span> Your current plan exceeds your retirement requirements.</>
+                     <>
+                       Increase your monthly contribution by{' '}
+                       <span className="text-[#8B5CF6] font-black">
+                         {formatCurrency(Math.max(0, (results.requiredMonthlyContributionForGoal || 0) - (results.monthlyContrib || 0)))}
+                       </span>{' '}
+                       to close your retirement goal gap.
+                     </>
                    )}
                  </div>
                </div>

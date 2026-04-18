@@ -278,7 +278,11 @@ export default function Dashboard() {
       const goalGap = Math.max(0, Number(baseResults?.retirementGoalGap) || Math.max(0, goalMonthly - projectedMonthlyPension));
       const currentContribution = Math.max(0, Number(baseResults?.monthlyContrib) || 0);
       const requiredContribution = Math.max(0, Number(baseResults?.requiredMonthlyContributionForGoal) || currentContribution);
-      const onTrack = goalGap <= 0 || requiredContribution <= currentContribution;
+      const goalOnTrack = goalGap <= 0 || requiredContribution <= currentContribution;
+      const score = Math.max(0, Number(baseResults?.score) || 0);
+      const scoreBand = getScoreBand(score);
+      const overallAtRisk = score <= 50;
+      const additionalMonthlyForReadiness = Math.max(0, Number(baseResults?.monthlyGap) || 0);
 
       return {
          goalMonthly,
@@ -286,7 +290,11 @@ export default function Dashboard() {
          goalGap,
          currentContribution,
          requiredContribution,
-         onTrack,
+         goalOnTrack,
+         overallAtRisk,
+         additionalMonthlyForReadiness,
+         score,
+         scoreBand,
       };
    }, [baseResults]);
 
@@ -718,11 +726,18 @@ export default function Dashboard() {
                   <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
                      <div className="bg-white border-2 border-[#1E293B] rounded-[20px] p-6 pop-shadow">
                         <div className="text-[10px] font-black uppercase tracking-[2px] text-[#1E293B]/45 mb-2">Retirement Goal Gap</div>
-                        {retirementGoalInsights.onTrack ? (
+                        {retirementGoalInsights.goalOnTrack && !retirementGoalInsights.overallAtRisk ? (
                            <>
                               <div className="font-heading font-extrabold text-2xl text-[#059669]">You are on track</div>
                               <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
                                  Projected pension {formatIndian(retirementGoalInsights.projectedMonthlyPension)}/m meets your goal of {formatIndian(retirementGoalInsights.goalMonthly)}/m.
+                              </p>
+                           </>
+                        ) : retirementGoalInsights.goalOnTrack ? (
+                           <>
+                              <div className="font-heading font-extrabold text-2xl text-[#B45309]">Goal is met, but overall plan is at risk</div>
+                              <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                 Pension goal is currently met, but readiness score is {retirementGoalInsights.score} ({retirementGoalInsights.scoreBand.label}). Strengthen contributions to build a safer buffer.
                               </p>
                            </>
                         ) : (
@@ -738,11 +753,21 @@ export default function Dashboard() {
 
                      <div className="bg-white border-2 border-[#1E293B] rounded-[20px] p-6 pop-shadow">
                         <div className="text-[10px] font-black uppercase tracking-[2px] text-[#1E293B]/45 mb-2">Contribution Required</div>
-                        {retirementGoalInsights.onTrack ? (
+                        {retirementGoalInsights.goalOnTrack && !retirementGoalInsights.overallAtRisk ? (
                            <>
                               <div className="font-heading font-extrabold text-2xl text-[#059669]">You are on track to meet your retirement goal</div>
                               <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
                                  Current monthly NPS contribution: {formatIndian(retirementGoalInsights.currentContribution)}.
+                              </p>
+                           </>
+                        ) : retirementGoalInsights.goalOnTrack ? (
+                           <>
+                              <div className="font-heading font-extrabold text-2xl text-[#B45309]">Increase contribution to improve safety margin</div>
+                              <p className="text-xs font-bold uppercase tracking-widest text-[#1E293B]/60 mt-2 leading-relaxed">
+                                 Current monthly NPS contribution: {formatIndian(retirementGoalInsights.currentContribution)}.
+                                 {retirementGoalInsights.additionalMonthlyForReadiness > 0
+                                   ? ` Add about ${formatIndian(retirementGoalInsights.additionalMonthlyForReadiness)}/month to improve overall readiness.`
+                                   : ' Maintain this contribution and review annually.'}
                               </p>
                            </>
                         ) : (

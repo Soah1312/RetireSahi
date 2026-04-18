@@ -320,11 +320,177 @@ function InputPanel({ values, onChange }) {
   );
 }
 
+function TaxProfilePanel({ values, onChange }) {
+  const deductions = [
+    { key: 'homeLoanInterest', label: 'Home Loan Interest (Annual)' },
+    { key: 'lifeInsurance_80C', label: 'Life Insurance 80C (Annual)' },
+    { key: 'elss_ppf_80C', label: 'ELSS / PPF 80C (Annual)' },
+    { key: 'medicalInsurance_80D', label: 'Medical Insurance 80D (Annual)' },
+    { key: 'educationLoanInterest_80E', label: 'Education Loan Interest 80E (Annual)' },
+  ];
+
+  const exemptions = [
+    { key: 'houseRentAllowance_HRA', label: 'House Rent Allowance HRA (Annual)' },
+    { key: 'actualRentPaid', label: 'Actual Rent Paid (Annual)' },
+    { key: 'leaveTravelAllowance_LTA', label: 'Leave Travel Allowance LTA (Annual)' },
+  ];
+
+  const updateCurrency = (key, rawValue) => {
+    onChange(key, Math.max(0, toSafeNumber(rawValue)));
+  };
+
+  const isGovtEmployee = Boolean(values?.isGovtEmployee);
+  const hasEmployerNPS = Boolean(values?.hasOptedForEmployerNPS);
+  const basicSalaryPct = Math.max(0.2, Math.min(0.8, toSafeNumber(values?.basicSalaryPct) || 0.4));
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-[#FFFDF5] border-2 border-[#1E293B] rounded-2xl p-5 space-y-4">
+        <p className="font-black text-xs uppercase tracking-widest text-[#1E293B]/60">Tax Regime</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => onChange('taxRegime', 'new')}
+            className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs cursor-pointer ${String(values?.taxRegime || 'new').toLowerCase() === 'new' ? 'bg-[#8B5CF6] text-white shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
+          >
+            New Regime
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange('taxRegime', 'old')}
+            className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs cursor-pointer ${String(values?.taxRegime || 'new').toLowerCase() === 'old' ? 'bg-[#8B5CF6] text-white shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
+          >
+            Old Regime
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-[#FFFDF5] border-2 border-[#1E293B] rounded-2xl p-5 space-y-4">
+        <p className="font-black text-xs uppercase tracking-widest text-[#1E293B]/60">Old Regime Deductions</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {deductions.map((field) => (
+            <div key={field.key} className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">{field.label}</label>
+              <div className="relative">
+                <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-slate-300">₹</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={values?.[field.key] ?? ''}
+                  onChange={(e) => updateCurrency(field.key, e.target.value)}
+                  placeholder="0"
+                  className="w-full bg-white border-2 border-[#1E293B] rounded-full px-10 py-3 font-bold text-sm outline-none focus:border-[#8B5CF6] transition-colors"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white border-2 border-[#1E293B] rounded-2xl p-5 space-y-4">
+        <p className="font-black text-xs uppercase tracking-widest text-[#1E293B]/60">Exemptions</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {exemptions.map((field) => (
+            <div key={field.key} className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">{field.label}</label>
+              <div className="relative">
+                <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-slate-300">₹</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={values?.[field.key] ?? ''}
+                  onChange={(e) => updateCurrency(field.key, e.target.value)}
+                  placeholder="0"
+                  className="w-full bg-[#FFFDF5] border-2 border-[#1E293B] rounded-full px-10 py-3 font-bold text-sm outline-none focus:border-[#8B5CF6] transition-colors"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white border-2 border-[#1E293B] rounded-2xl p-5 space-y-4">
+        <p className="font-black text-xs uppercase tracking-widest text-[#1E293B]/60">Employment Context</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => onChange('isGovtEmployee', false)}
+            className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs cursor-pointer ${!isGovtEmployee ? 'bg-[#34D399] text-[#1E293B] shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
+          >
+            Private
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange('isGovtEmployee', true)}
+            className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs cursor-pointer ${isGovtEmployee ? 'bg-[#34D399] text-[#1E293B] shadow-[3px_3px_0_0_#1E293B]' : 'bg-white text-[#1E293B]'}`}
+          >
+            Government
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              onChange('hasOptedForEmployerNPS', false);
+              onChange('employerNPSAmount', 0);
+            }}
+            className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs cursor-pointer ${!hasEmployerNPS ? 'bg-[#1E293B] text-white shadow-[3px_3px_0_0_#FBBF24]' : 'bg-white text-[#1E293B]'}`}
+          >
+            No Employer NPS
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange('hasOptedForEmployerNPS', true)}
+            className={`py-3 rounded-xl border-2 border-[#1E293B] font-black uppercase tracking-widest text-xs cursor-pointer ${hasEmployerNPS ? 'bg-[#1E293B] text-white shadow-[3px_3px_0_0_#FBBF24]' : 'bg-white text-[#1E293B]'}`}
+          >
+            Employer NPS Enabled
+          </button>
+        </div>
+
+        {hasEmployerNPS && (
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black uppercase tracking-widest text-[#1E293B]/60">Basic Salary % of CTC</label>
+              <span className="font-black text-[#8B5CF6]">{Math.round(basicSalaryPct * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min="20"
+              max="80"
+              step="1"
+              value={Math.round(basicSalaryPct * 100)}
+              onChange={(e) => onChange('basicSalaryPct', Number(e.target.value) / 100)}
+              className="w-full h-2 bg-[#E2E8F0] border border-[#1E293B]/30 rounded-lg appearance-none cursor-pointer accent-[#8B5CF6]"
+            />
+
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Employer NPS Amount (Monthly)</label>
+              <div className="relative">
+                <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-slate-300">₹</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={values?.employerNPSAmount ?? ''}
+                  onChange={(e) => updateCurrency('employerNPSAmount', e.target.value)}
+                  placeholder="0"
+                  className="w-full bg-slate-50 border-2 border-[#1E293B] rounded-full px-10 py-3 font-bold text-sm outline-none focus:border-[#8B5CF6] transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
   { id: 'overview',    label: 'Overview',      Icon: ShieldCheck   },
   { id: 'whatif',      label: 'What-If',        Icon: Zap          },
+  { id: 'tax-profile', label: 'Tax Profile',    Icon: IndianRupee   },
   { id: 'inputs',      label: 'Edit Inputs',   Icon: RefreshCw     },
 ];
 
@@ -959,6 +1125,36 @@ function TaxShieldContent() {
 
 
       {/* ═══ INPUTS ══════════════════════════════════════════════════════════ */}
+      {tab === 'tax-profile' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h3 className="font-heading font-extrabold text-[#1E293B] uppercase tracking-widest">Tax Profile</h3>
+              <p className="text-[10px] font-bold text-[#1E293B]/40 uppercase tracking-widest">Moved from onboarding so you can update this any time from Tax Shield</p>
+            </div>
+            <button
+              onClick={() => setFormData(userData || {})}
+              className="text-[10px] font-black text-[#8B5CF6] flex items-center gap-1.5 hover:gap-2.5 transition-all cursor-pointer uppercase tracking-widest"
+            >
+              <RefreshCw size={12} strokeWidth={3} /> Reset
+            </button>
+          </div>
+
+          <div className="bg-white border-2 border-[#1E293B] rounded-[24px] pop-shadow p-5 sm:p-6 relative overflow-hidden">
+            <div className="w-1.5 absolute left-0 top-0 h-full bg-[#8B5CF6]" />
+            <TaxProfilePanel values={formData} onChange={handleChange} />
+          </div>
+
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="w-full py-4 bg-[#8B5CF6] text-white border-2 border-[#1E293B] rounded-full font-black uppercase tracking-widest text-xs pop-shadow hover:-translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            <ShieldCheck size={16} strokeWidth={2.5} /> {isSaving ? 'Saving...' : 'Save Tax Profile'}
+          </button>
+        </div>
+      )}
+
       {tab === 'inputs' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between mb-2">
