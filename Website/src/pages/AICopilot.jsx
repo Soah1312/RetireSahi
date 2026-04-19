@@ -56,6 +56,31 @@ function isCreatorIdentityQuestion(text) {
   return /\b(who\s+(created|made|built|developed)\s+(this\s+)?(platform|app|website|site)|who\s+is\s+behind\s+(this\s+)?(platform|app|website|site)|who(?:'s|\s+is)\s+(the\s+)?(creator|founder|team))\b/i.test(normalized);
 }
 
+const FINANCE_SCOPE_PATTERN = /\b(finance|financial|money|retire|retirement|nps|pension|annuity|corpus|tax|80ccd|budget|budgeting|expense|expenses|spend|spending|save|saving|savings|invest|investment|investing|sip|mutual\s*fund|equity|debt|asset\s*allocation|salary|ctc|compensation|take\s*home|in\s*hand|job\s*switch|offer|hike|promotion|loan|emi|debt|insurance|pf|epf|ppf|inflation|net\s*worth|cash\s*flow|emergency\s*fund|wealth|goal\s*planning)\b/i;
+const NON_FINANCE_PATTERN = /\b(recipe|cook|cooking|kitchen|maggie|maggi|noodles|movie|cinema|song|music|lyrics|joke|meme|poem|story|travel|game|gaming|cricket|football|anime|astrology|horoscope|weather|coding|code|programming|javascript|typescript|python|java|react|html|css|debug|bug|stack\s*trace|terminal|docker|kubernetes)\b/i;
+
+function isFinanceOnlyQuestion(text) {
+  if (typeof text !== 'string') return false;
+  const normalized = text.trim().toLowerCase();
+  if (!normalized) return false;
+  if (NON_FINANCE_PATTERN.test(normalized)) return false;
+  return FINANCE_SCOPE_PATTERN.test(normalized);
+}
+
+function buildOutOfScopeResponse(displayData) {
+  const monthlyIncome = Number(displayData?.monthlyIncome || 0);
+  const currentContribution = Number(displayData?.npsContribution || 0);
+  const incomeText = monthlyIncome > 0 ? `₹${formatIndian(monthlyIncome)}` : 'my monthly income';
+  const contributionText = currentContribution > 0 ? `₹${formatIndian(currentContribution)}` : 'my current monthly NPS contribution';
+
+  return [
+    'I can only help with financial advice related to retirement, NPS, tax, savings, investments, and money decisions.',
+    'Try one of these instead:',
+    `1) Based on ${incomeText}, how much should I invest monthly to reach my retirement goal?`,
+    `2) If ${contributionText}, what is the best step-up plan to improve my retirement score?`,
+  ].join('\n');
+}
+
 const markdownComponents = {
   p: (props) => <p className="mb-3 last:mb-0 leading-relaxed" {...props} />,
   strong: (props) => <strong className="font-black text-[#1E293B]" {...props} />,
@@ -434,6 +459,25 @@ const ChatInterface = () => {
       return;
     }
 
+    if (!isFinanceOnlyQuestion(text)) {
+      const now = new Date();
+      setMessages((prev) => [
+        ...prev,
+        { role: 'user', content: text, timestamp: now },
+        {
+          role: 'assistant',
+          content: buildOutOfScopeResponse(displayData),
+          model: 'scope-guard',
+          fallbackUsed: false,
+          timestamp: new Date(),
+        },
+      ]);
+      setInputValue('');
+      setAssistantPlaceholderStageIndex(0);
+      setError(null);
+      return;
+    }
+
     const userMessage = { role: 'user', content: text, timestamp: new Date() };
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
@@ -529,12 +573,9 @@ New regime 87A rebate zero tax if income under 12L.
 
 IDENTITY RULE: If user asks who created this platform/app/website, reply exactly: Team Chakuli
 
-SCOPE DECISION RULE (dynamic):
-1) First decide whether the user question is finance-related for this product.
-2) Treat as in-scope if it is about retirement, NPS, tax, savings, debt, budgeting, investing in the context of planning, or career decisions that affect personal finances (salary hikes, job switches, compensation structure).
-3) If out-of-scope, politely decline in 2-4 sentences and redirect to finance by giving exactly 2 suggested follow-up questions personalized with the user's context.
-4) Do not provide non-finance instructions (e.g., coding help, recipes, entertainment, unrelated technical troubleshooting).
-5) For in-scope questions, answer normally with the style rules below.
+SCOPE RULE (strict):
+Answer only finance questions for this product: retirement, NPS, tax, savings, investing, debt, budgeting, and career decisions that materially affect compensation/personal finance.
+Never provide non-finance instructions or content (for example: recipes, coding help, entertainment, or unrelated troubleshooting).
 
 STYLE: Warm direct concise. Use Indian formatting Lakh Crore.
 Always use ${displayData.firstName}'s actual computed numbers.
