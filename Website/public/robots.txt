@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+Disallow: /dashboard
+Disallow: /onboarding
+Disallow: /tax-shield
+Disallow: /dream-planner
+Disallow: /ai-copilot
+Disallow: /settings
+
+Sitemap: https://retiresahi.vercel.app/sitemap.xml

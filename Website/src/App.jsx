@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthSessionProvider } from './components/AuthSessionProvider';
+import SeoHead from './components/SeoHead';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
@@ -28,6 +29,7 @@ function App() {
   return (
     <AuthSessionProvider>
       <BrowserRouter>
+        <SeoHead />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<LandingPage />} />

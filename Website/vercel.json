@@ -12,7 +12,15 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/learn",
+      "destination": "/learn/index.html"
+    },
+    {
+      "source": "/methodology",
+      "destination": "/methodology/index.html"
+    },
+    {
+      "source": "/((?!api/|robots\\.txt$|sitemap\\.xml$).*)",
       "destination": "/index.html"
     }
   ]
