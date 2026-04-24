@@ -6,14 +6,7 @@ const PRIMARY_MODEL = getEnv('GROQ_PRIMARY_MODEL') || 'qwen/qwen3-32b';
 const FALLBACK_MODEL = getEnv('GROQ_FALLBACK_MODEL') || 'openai/gpt-oss-120b';
 const MAX_MESSAGES = 12;
 const MAX_CHARS_PER_MESSAGE = 6000;
-const FINANCE_SCOPE_PATTERN = /\b(finance|financial|money|retire|retirement|nps|pension|annuity|corpus|tax|80ccd|budget|budgeting|expense|expenses|spend|spending|save|saving|savings|invest|investment|investing|sip|mutual\s*fund|equity|debt|asset\s*allocation|salary|ctc|compensation|take\s*home|in\s*hand|job\s*switch|offer|hike|promotion|loan|emi|debt|insurance|pf|epf|ppf|inflation|net\s*worth|cash\s*flow|emergency\s*fund|wealth|goal\s*planning)\b/i;
-const NON_FINANCE_PATTERN = /\b(recipe|cook|cooking|kitchen|maggie|maggi|noodles|movie|cinema|song|music|lyrics|joke|meme|poem|story|travel|game|gaming|cricket|football|anime|astrology|horoscope|weather|coding|code|programming|javascript|typescript|python|java|react|html|css|debug|bug|stack\s*trace|terminal|docker|kubernetes)\b/i;
-const SCOPE_GUARD_REPLY = [
-  'I can only help with financial advice related to retirement, NPS, tax, savings, investments, and money decisions.',
-  'Try one of these instead:',
-  '1) Based on my monthly income, how much should I invest each month to reach my retirement goal?',
-  '2) How should I adjust my NPS contribution and asset allocation to improve my retirement score?',
-].join('\n');
+
 
 function getEnv(name) {
   const value = process.env[name];
@@ -117,36 +110,7 @@ function parseRequestBody(req) {
   return {};
 }
 
-function isFinanceOnlyQuestion(text) {
-  if (typeof text !== 'string') return false;
-  const normalized = text.trim().toLowerCase();
-  if (!normalized) return false;
-  if (NON_FINANCE_PATTERN.test(normalized)) return false;
-  return FINANCE_SCOPE_PATTERN.test(normalized);
-}
 
-function writeScopeGuardStream(res) {
-  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-
-  if (typeof res.flushHeaders === 'function') {
-    res.flushHeaders();
-  }
-
-  res.write(`data: ${JSON.stringify({
-    type: 'meta',
-    model: 'scope-guard',
-    primaryModel: PRIMARY_MODEL,
-    fallbackModel: FALLBACK_MODEL,
-    fallbackUsed: false,
-    forceFallback: false,
-  })}\n\n`);
-  res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: SCOPE_GUARD_REPLY } }] })}\n\n`);
-  res.write('data: [DONE]\n\n');
-  res.end();
-}
 
 async function relayGroqStream(groqResponse, res, streamMeta = null) {
   if (!groqResponse.body) {
@@ -320,20 +284,6 @@ export default async function handler(req, res) {
     const messages = normalizeMessages(body.messages);
     const stream = Boolean(body.stream);
     const forceFallback = Boolean(body.forceFallback) && (isLocalhost || isLocalDebug);
-    const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user')?.content || '';
-
-    if (!isFinanceOnlyQuestion(latestUserMessage)) {
-      if (stream) {
-        writeScopeGuardStream(res);
-        return;
-      }
-
-      return res.status(200).json({
-        content: SCOPE_GUARD_REPLY,
-        model: 'scope-guard',
-        fallbackUsed: false,
-      });
-    }
 
     const groqApiKey = getEnv('GROQ_API_KEY');
     if (!groqApiKey) {
